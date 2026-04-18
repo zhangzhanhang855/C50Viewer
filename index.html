@@ -4,75 +4,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Web - 完美防崩溃版</title>
+    <title>Minecraft Web - 多人联机版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
         
-        /* 加载界面 */
-        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #55aa55; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        .spinner { margin-top: 20px; width: 40px; height: 40px; border: 5px solid white; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #222; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; font-size: 24px; font-weight: bold; }
+        .spinner { margin-top: 20px; width: 40px; height: 40px; border: 5px solid #4CAF50; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.9); font-size: 22px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 0px #000;}
         #ui { position: absolute; top: 15px; left: 15px; color: white; text-shadow: 1px 1px 2px black; z-index: 100; pointer-events: none;}
-        #hp-bar { font-size: 16px; margin-bottom: 5px; letter-spacing: 2px;}
-        #info-panel { font-size: 12px; color: #ddd; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 5px; line-height: 1.5;}
-        #intro-text { position: absolute; top: 25%; width: 100%; text-align: center; color: white; font-size: 16px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; z-index: 50;}
+        #info-panel { font-size: 12px; color: #ddd; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 5px; line-height: 1.6;}
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: yellow; margin-right: 5px; }
 
-        /* 控制按钮 */
         .btn { position: absolute; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; z-index: 100; backdrop-filter: blur(2px); box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         #jump-btn { bottom: 30px; right: 30px; width: 65px; height: 65px; font-size: 16px;}
         #place-btn { bottom: 110px; right: 30px; width: 55px; height: 55px; font-size: 22px;}
         #break-btn { bottom: 30px; right: 110px; width: 55px; height: 55px; font-size: 22px;}
-        #inv-btn { top: 15px; right: 15px; width: 50px; height: 50px; border-radius: 10px; font-size: 24px; background: rgba(0,0,0,0.5); }
         #joystick-base { position: absolute; width: 100px; height: 100px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; display: none; z-index: 100; transform: translate(-50%, -50%); pointer-events: none; }
         #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
 
-        /* 快捷栏 */
         #hotbar-container { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 90;}
         #block-name { color: white; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
         #hotbar { display: flex; gap: 2px; background: rgba(20, 20, 20, 0.8); padding: 4px; border: 3px solid #444; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .slot { width: 34px; height: 34px; border: 2px solid #888; background-color: #555; box-sizing: border-box; position: relative; box-shadow: inset 2px 2px 0px rgba(255,255,255,0.3), inset -2px -2px 0px rgba(0,0,0,0.3); background-size: cover; background-position: center; image-rendering: pixelated; border-radius: 2px;}
+        .slot { width: 34px; height: 34px; border: 2px solid #888; background-color: #555; box-sizing: border-box; position: relative; background-size: cover; background-position: center; image-rendering: pixelated; border-radius: 2px;}
         .slot.active { border: 3px solid #fff; transform: translateY(-4px); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
-        .slot-count { position: absolute; bottom: 0; right: 2px; color: white; font-size: 10px; text-shadow: 1px 1px 0 #000; font-weight: bold;}
-
-        /* 背包 UI */
-        #inventory-modal { position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; background: rgba(30,30,30,0.95); border: 4px solid #555; border-radius: 10px; z-index: 200; display: none; flex-direction: column; box-sizing: border-box; padding: 10px; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.8);}
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 10px;}
-        .close-btn { background: #d32f2f; color: white; border: 2px solid #ff5252; padding: 5px 15px; font-weight: bold; border-radius: 5px;}
-        .modal-content { display: flex; flex: 1; gap: 10px; overflow: hidden; }
-        .inv-section { flex: 1; background: rgba(0,0,0,0.3); border: 2px solid #444; border-radius: 5px; padding: 10px; overflow-y: auto; }
-        .section-title { text-align: center; font-weight: bold; margin-bottom: 10px; color: #ffd700; border-bottom: 1px dashed #555; padding-bottom: 5px;}
-        .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; }
-        .inv-item { width: 40px; height: 40px; border: 2px solid #777; position: relative; background-size: cover; image-rendering: pixelated; border-radius: 3px;}
-        .inv-item.equipped { border-color: #00ff00; box-shadow: 0 0 5px #00ff00; }
-        #death-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.5); color: white; display: none; justify-content: center; align-items: center; flex-direction: column; z-index: 300; font-size: 30px; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-        #respawn-btn { margin-top: 20px; padding: 10px 20px; font-size: 20px; background: #555; color: white; border: 2px solid white; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <!-- 加载遮罩层 -->
     <div id="loading-screen">
-        <div>正在生成无限世界...</div>
+        <div id="loading-text">正在连接服务器与生成世界...</div>
         <div class="spinner"></div>
     </div>
 
     <div id="crosshair">+</div>
     <div id="ui">
-        <div id="hp-bar">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
         <div id="info-panel">
+            <span class="status-dot" id="net-dot"></span><span id="mp-status">连接中...</span><br>
             坐标: <span id="pos-val">0, 0, 0</span><br>
-            时间: <span id="time-val">00:00</span><br>
-            实体数: <span id="mob-val">0</span>
+            玩家在线: <span id="players-val">1</span>
         </div>
     </div>
-    
-    <div id="intro-text">探索山林、村庄，小心夜间的僵尸！</div>
 
     <div id="jump-btn" class="btn">跳</div>
     <div id="place-btn" class="btn">🧱</div>
     <div id="break-btn" class="btn">⛏️</div>
-    <div id="inv-btn" class="btn">🎒</div>
     <div id="joystick-base"><div id="joystick-knob"></div></div>
 
     <div id="hotbar-container">
@@ -80,582 +56,449 @@
         <div id="hotbar"></div>
     </div>
 
-    <div id="inventory-modal">
-        <div class="modal-header">
-            <h2>背包</h2>
-            <div class="close-btn" id="close-inv">关闭</div>
-        </div>
-        <div class="modal-content">
-            <div class="inv-section">
-                <div class="section-title">我的物品 (点击装备)</div>
-                <div class="inv-grid" id="inv-grid-content"></div>
-            </div>
-        </div>
-    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+            }
+        }
+    </script>
 
-    <div id="death-screen">
-        <div>你死了！</div>
-        <button id="respawn-btn">重生</button>
-    </div>
-
-    <!-- 放弃 importmap，直接使用高稳定性的 ES 模块 CDN 引入 -->
     <script type="module">
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+        import * as THREE from 'three';
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 
         // ==========================================
-        // 1. 柏林噪声库
+        // 1. Firebase 联机引擎 (Multiplayer Core)
+        // ==========================================
+        let db, auth, userId, appId;
+        let isMultiplayer = false;
+        const otherPlayers = new Map(); // 存储其他玩家的模型
+
+        async function initMultiplayer() {
+            try {
+const firebaseConfig = {
+  apiKey: "AIzaSyD8TEjca6stDdQxdcTCxp2AUyOPNLoAx34",
+  authDomain: "web-mc-93d62.firebaseapp.com",
+  projectId: "web-mc-93d62",
+  storageBucket: "web-mc-93d62.firebasestorage.app",
+  messagingSenderId: "1014274279101",
+  appId: "1:1014274279101:web:dde172a2ed5d7d7b1319d4"
+};
+
+                if (typeof __firebase_config === 'undefined') throw new Error("无服务器配置");
+                
+                const app = initializeApp(JSON.parse(__firebase_config));
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'mc-multiplayer';
+
+                // 强制要求 Auth 验证
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                userId = auth.currentUser.uid;
+                isMultiplayer = true;
+                
+                document.getElementById('net-dot').style.background = '#4CAF50';
+                document.getElementById('mp-status').innerText = "已连接联机网络";
+                
+                setupNetworkListeners();
+            } catch (e) {
+                console.warn("联机初始化失败，切换为单机模式:", e);
+                document.getElementById('net-dot').style.background = '#f44336';
+                document.getElementById('mp-status').innerText = "单机模式 (离线)";
+            }
+        }
+
+        function setupNetworkListeners() {
+            // 监听其他玩家动态
+            const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            onSnapshot(playersRef, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.doc.id === userId) return; // 忽略自己
+                    const data = change.doc.data();
+                    
+                    if (change.type === 'added' || change.type === 'modified') {
+                        // 10秒没更新视为掉线
+                        if (Date.now() - data.timestamp > 10000) {
+                            removeOtherPlayer(change.doc.id);
+                            return;
+                        }
+                        updateOtherPlayer(change.doc.id, data);
+                    }
+                    if (change.type === 'removed') {
+                        removeOtherPlayer(change.doc.id);
+                    }
+                });
+                document.getElementById('players-val').innerText = otherPlayers.size + 1;
+            }, (err) => console.error("网络玩家错误", err));
+
+            // 监听方块世界改变
+            const blocksRef = collection(db, 'artifacts', appId, 'public', 'data', 'blocks');
+            onSnapshot(blocksRef, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    const data = change.doc.data();
+                    const [x, y, z] = change.doc.id.split('_').map(Number);
+                    // 同步到本地世界 (false 代表不再回传给服务器)
+                    setBlock(x, y, z, data.id, true, false); 
+                });
+            }, (err) => console.error("网络方块错误", err));
+            
+            // 离线清除自身数据
+            window.addEventListener('beforeunload', () => {
+                if(userId && isMultiplayer) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', userId));
+            });
+        }
+
+        let lastSyncTime = 0;
+        function syncPlayerTransform() {
+            if (!isMultiplayer || !userId) return;
+            const now = Date.now();
+            if (now - lastSyncTime > 150) { // 限流，150ms发一次坐标
+                lastSyncTime = now;
+                const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', userId);
+                setDoc(pRef, {
+                    x: player.position.x, y: player.position.y, z: player.position.z,
+                    ry: player.rotation.y, rx: pitchObject.rotation.x,
+                    timestamp: now
+                }).catch(e => console.error("Sync error:", e));
+            }
+        }
+
+        // 简易 3D 方块人生成
+        function updateOtherPlayer(id, data) {
+            if (!otherPlayers.has(id)) {
+                const group = new THREE.Group();
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({color: 0xffccaa}));
+                head.position.y = 1.4;
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.3), new THREE.MeshLambertMaterial({color: 0x3366ff}));
+                body.position.y = 0.7;
+                group.add(head); group.add(body);
+                scene.add(group);
+                otherPlayers.set(id, { group, head });
+            }
+            const p = otherPlayers.get(id);
+            // 平滑插值 (Lerp) 可以留到以后，这里直接设定位置
+            p.group.position.set(data.x, data.y, data.z);
+            p.group.rotation.y = data.ry;
+            p.head.rotation.x = data.rx;
+            p.lastUpdate = Date.now();
+        }
+
+        function removeOtherPlayer(id) {
+            if (otherPlayers.has(id)) {
+                scene.remove(otherPlayers.get(id).group);
+                otherPlayers.delete(id);
+            }
+        }
+
+        // ==========================================
+        // 2. 地形与材质生成
         // ==========================================
         const PERLIN = {
             p: new Uint8Array(512),
-            init() {
-                let p = new Uint8Array(256);
-                for (let i=0; i<256; i++) p[i] = Math.floor(Math.random()*256);
-                for (let i=0; i<512; i++) this.p[i] = p[i & 255];
-            },
-            fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); },
-            lerp(t, a, b) { return a + t * (b - a); },
-            grad(hash, x, y, z) {
-                let h = hash & 15; let u = h < 8 ? x : y; let v = h < 4 ? y : h === 12 || h === 14 ? x : z;
-                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-            },
-            noise(x, y, z) {
-                let X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
-                x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
-                let u = this.fade(x), v = this.fade(y), w = this.fade(z);
-                let A = this.p[X]+Y, AA = this.p[A]+Z, AB = this.p[A+1]+Z;
-                let B = this.p[X+1]+Y, BA = this.p[B]+Z, BB = this.p[B+1]+Z;
-                return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x-1, y, z)),
-                    this.lerp(u, this.grad(this.p[AB], x, y-1, z), this.grad(this.p[BB], x-1, y-1, z))),
-                    this.lerp(v, this.lerp(u, this.grad(this.p[AA+1], x, y, z-1), this.grad(this.p[BA+1], x-1, y, z-1)),
-                    this.lerp(u, this.grad(this.p[AB+1], x, y-1, z-1), this.grad(this.p[BB+1], x-1, y-1, z-1))));
+            init() { let p = new Uint8Array(256); for (let i=0; i<256; i++) p[i]=Math.floor(Math.random()*256); for (let i=0; i<512; i++) this.p[i]=p[i&255]; },
+            fade(t) { return t*t*t*(t*(t*6-15)+10); }, lerp(t,a,b) { return a+t*(b-a); },
+            grad(hash,x,y,z) { let h=hash&15; let u=h<8?x:y; let v=h<4?y:h===12||h===14?x:z; return ((h&1)===0?u:-u)+((h&2)===0?v:-v); },
+            noise(x,y,z) {
+                let X=Math.floor(x)&255, Y=Math.floor(y)&255, Z=Math.floor(z)&255; x-=Math.floor(x); y-=Math.floor(y); z-=Math.floor(z);
+                let u=this.fade(x), v=this.fade(y), w=this.fade(z);
+                let A=this.p[X]+Y, AA=this.p[A]+Z, AB=this.p[A+1]+Z; let B=this.p[X+1]+Y, BA=this.p[B]+Z, BB=this.p[B+1]+Z;
+                return this.lerp(w,this.lerp(v,this.lerp(u,this.grad(this.p[AA],x,y,z),this.grad(this.p[BA],x-1,y,z)),this.lerp(u,this.grad(this.p[AB],x,y-1,z),this.grad(this.p[BB],x-1,y-1,z))),
+                       this.lerp(v,this.lerp(u,this.grad(this.p[AA+1],x,y,z-1),this.grad(this.p[BA+1],x-1,y,z-1)),this.lerp(u,this.grad(this.p[AB+1],x,y-1,z-1),this.grad(this.p[BB+1],x-1,y-1,z-1))));
             }
         };
         PERLIN.init();
-        function hash2(x, z) { let h = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return Math.abs(h - Math.floor(h)); }
 
-        // ==========================================
-        // 2. 方块材质生成器
-        // ==========================================
         const blockDB = [];
-        function hexToRgb(hex) { return {r: ((hex>>16)&255)/255, g: ((hex>>8)&255)/255, b: (hex&255)/255}; }
-        function createTex(type, baseHex) {
-            const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
-            const ctx = canvas.getContext('2d'); const base = hexToRgb(baseHex);
-            for(let x=0; x<16; x++) {
-                for(let y=0; y<16; y++) {
-                    let r=base.r, g=base.g, b=base.b;
-                    const noise = (Math.random() - 0.5) * 0.15; r+=noise; g+=noise; b+=noise;
-                    if(type==='grass_side' && y<6) { r=0.54+noise; g=0.27+noise; b=0.07+noise; }
-                    if(type==='wood' && x%4===0) { r-=0.1; g-=0.1; b-=0.1; }
-                    if(type==='plank' && (y%4===0 || (x===0||x===8))) { r-=0.1; g-=0.1; b-=0.1; }
-                    r=Math.max(0,Math.min(1,r)); g=Math.max(0,Math.min(1,g)); b=Math.max(0,Math.min(1,b));
-                    ctx.fillStyle = `rgb(${Math.floor(r*255)},${Math.floor(g*255)},${Math.floor(b*255)})`; ctx.fillRect(x,y,1,1);
-                }
-            }
-            const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter;
-            return { tex, url: canvas.toDataURL() };
+        function createTex(type, hex) {
+            const canvas = document.createElement('canvas'); canvas.width=16; canvas.height=16; const ctx = canvas.getContext('2d');
+            const r=(hex>>16&255)/255, g=(hex>>8&255)/255, b=(hex&255)/255;
+            for(let x=0;x<16;x++){ for(let y=0;y<16;y++){
+                let nr=r, ng=g, nb=b; const n=(Math.random()-0.5)*0.15; nr+=n; ng+=n; nb+=n;
+                if(type==='grass_side'&&y<6){ nr=0.54+n; ng=0.27+n; nb=0.07+n; }
+                if(type==='wood'&&x%4===0){ nr-=0.1; ng-=0.1; nb-=0.1; }
+                ctx.fillStyle=`rgb(${Math.floor(Math.max(0,Math.min(1,nr))*255)},${Math.floor(Math.max(0,Math.min(1,ng))*255)},${Math.floor(Math.max(0,Math.min(1,nb))*255)})`;
+                ctx.fillRect(x,y,1,1);
+            }}
+            const tex=new THREE.CanvasTexture(canvas); tex.magFilter=THREE.NearestFilter; return {tex, url:canvas.toDataURL()};
         }
-
+        
         blockDB[1] = { name: "草方块", type: 'multiside', top: createTex('solid', 0x55aa55), side: createTex('grass_side', 0x55aa55), bot: createTex('solid', 0x8b4513) };
         blockDB[2] = { name: "泥土", type: 'solid', tex: createTex('solid', 0x8b4513) };
         blockDB[3] = { name: "石头", type: 'solid', tex: createTex('solid', 0x808080) };
         blockDB[4] = { name: "原木", type: 'solid', tex: createTex('wood', 0x6b4226) };
         blockDB[5] = { name: "树叶", type: 'transparent', tex: createTex('solid', 0x2e8b57) };
-        blockDB[6] = { name: "木板", type: 'solid', tex: createTex('plank', 0xcd853f) }; 
-        blockDB[7] = { name: "玻璃", type: 'solid', tex: createTex('solid', 0xadd8e6) }; 
-        blockDB[8] = { name: "基岩", type: 'solid', tex: createTex('solid', 0x333333) };
+        blockDB[6] = { name: "红砖", type: 'solid', tex: createTex('solid', 0xb22222) };
+        blockDB[7] = { name: "玻璃", type: 'transparent', tex: createTex('solid', 0xadd8e6) };
 
         const materials = [];
-        for(let i=1; i<=8; i++) {
-            const b = blockDB[i];
-            if(b.type === 'multiside') {
-                const s = new THREE.MeshLambertMaterial({ map: b.side.tex }), t = new THREE.MeshLambertMaterial({ map: b.top.tex }), bot = new THREE.MeshLambertMaterial({ map: b.bot.tex });
-                materials[i] = [s, s, t, bot, s, s];
-            } else {
-                materials[i] = new THREE.MeshLambertMaterial({ map: b.tex.tex, transparent: b.type==='transparent', opacity: 0.8 });
-            }
+        for(let i=1; i<=7; i++) {
+            if(blockDB[i].type === 'multiside') materials[i] = [new THREE.MeshLambertMaterial({map:blockDB[i].side.tex}), new THREE.MeshLambertMaterial({map:blockDB[i].side.tex}), new THREE.MeshLambertMaterial({map:blockDB[i].top.tex}), new THREE.MeshLambertMaterial({map:blockDB[i].bot.tex}), new THREE.MeshLambertMaterial({map:blockDB[i].side.tex}), new THREE.MeshLambertMaterial({map:blockDB[i].side.tex})];
+            else materials[i] = new THREE.MeshLambertMaterial({map:blockDB[i].tex.tex, transparent:blockDB[i].type==='transparent', opacity:0.8});
         }
 
         // ==========================================
-        // 3. 核心变量
+        // 3. 游戏引擎核心
         // ==========================================
         let scene, camera, renderer, player, pitchObject;
         let velocity = new THREE.Vector3(); 
         const GRAVITY = 25.0, JUMP_FORCE = 8.5, SPEED = 5.0; 
-        let canJump = false, prevTime = performance.now();
-        let moveX = 0, moveZ = 0; 
-        let moveTouchId = null, lookTouchId = null, joystickStartX = 0, joystickStartY = 0;
-        const touchesData = {};
-
+        let moveX=0, moveZ=0, canJump=false, prevTime=performance.now();
+        
         const CHUNK_SIZE = 16, RENDER_DISTANCE = 2; 
         const blockDataMap = new Map(); 
-        const chunkDecorations = new Map(); 
         const activeChunks = new Map(); 
         let currentChunkX = -999, currentChunkZ = -999;
         
-        const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
-        let raycaster = new THREE.Raycaster(); 
-        let selectionBox; 
-        let playerHP = 20; 
-        let targetBlockData = null; 
-        let isInventoryOpen = false;
-        let isDead = false;
-        
-        let gameTime = 6000; 
-        let sunLight, hemiLight, skyColor, fog;
+        const blockGeo = new THREE.BoxGeometry(1, 1, 1);
+        let raycaster = new THREE.Raycaster(), selectionBox, targetBlockData = null; 
 
-        const inventory = new Array(10).fill(0);
-        inventory[1] = 64; inventory[6] = 64; 
         const hotbarSlots = [1, 2, 3, 4, 5, 6, 7];
         let activeHotbarIndex = 0;
 
-        init();
-        buildHUD();
-        initTouchControls();
-        
-        // 延迟加载世界，给浏览器留出渲染“正在加载”文字的时间
-        setTimeout(() => {
+        // 启动序列
+        async function boot() {
+            await initMultiplayer();
+            init3D();
+            buildHUD();
+            initControls();
+            
+            // 预加载地形
             updateChunks();
             document.getElementById('loading-screen').style.display = 'none';
             animate();
-        }, 500);
+        }
+        boot();
 
-        function init() {
+        function init3D() {
             scene = new THREE.Scene();
-            skyColor = new THREE.Color(0x87CEEB);
-            scene.background = skyColor;
-            fog = new THREE.Fog(0x87CEEB, 10, RENDER_DISTANCE * CHUNK_SIZE + 10);
-            scene.fog = fog;
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 10, RENDER_DISTANCE * CHUNK_SIZE + 5);
 
-            hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.7);
-            scene.add(hemiLight);
-            sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            sunLight.position.set(100, 200, 50);
-            scene.add(sunLight);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 0.7));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(100, 200, 50); scene.add(sun);
 
             player = new THREE.Group(); 
-            player.position.set(0, 50, 0); 
+            // 出生在固定高度避免掉虚空
+            player.position.set(0, 30, 0); 
             scene.add(player);
 
-            pitchObject = new THREE.Group();
-            pitchObject.position.y = 1.6; 
-            player.add(pitchObject);
-
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-            pitchObject.add(camera);
+            pitchObject = new THREE.Group(); pitchObject.position.y = 1.6; player.add(pitchObject);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000); pitchObject.add(camera);
 
             const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01, 1.01, 1.01)); 
             selectionBox = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }));
-            selectionBox.visible = false; 
-            scene.add(selectionBox);
+            selectionBox.visible = false; scene.add(selectionBox);
 
             renderer = new THREE.WebGLRenderer({ antialias: false }); 
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); 
             document.body.appendChild(renderer.domElement);
 
-            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-            document.getElementById('respawn-btn').addEventListener('click', respawn);
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         }
 
         // ==========================================
-        // 4. 地形生成
+        // 4. 世界同步逻辑
         // ==========================================
-        function getTerrainHeight(x, z) {
-            let h1 = PERLIN.noise(x*0.01, 0, z*0.01) * 20; 
-            let h2 = PERLIN.noise(x*0.05, 0, z*0.05) * 5;
-            let mountains = PERLIN.noise(x*0.002, 0, z*0.002);
-            mountains = Math.max(0, mountains - 0.2) * 50; 
-            return Math.floor(h1 + h2 + mountains) + 20;
-        }
-
-        function getBaseBlock(x, y, z) {
-            if (y < 0) return 0;
-            const surfaceY = getTerrainHeight(x, z);
-            if (y > surfaceY) return 0;
-            if (y === surfaceY) return 1; 
-            if (y > surfaceY - 3) return 2; 
-            if (y === 0) return 8; 
-            return 3; 
+        function getTerrainY(x, z) {
+            return Math.floor((PERLIN.noise(x*0.02, 0, z*0.02)*1.5 + PERLIN.noise(x*0.05, 0, z*0.05)*0.5)*10) + 15;
         }
 
         function getBlock(x, y, z) {
             const key = `${x}_${y}_${z}`;
             if (blockDataMap.has(key)) return blockDataMap.get(key);
-            return getBaseBlock(x, y, z);
+            if (y < 0) return 0;
+            const sy = getTerrainY(x, z);
+            if (y > sy) return 0;
+            if (y === sy) return 1;
+            if (y > sy - 3) return 2;
+            if (y === 0) return 8;
+            return 3;
         }
 
-        function setBlock(x, y, z, id, updateMesh = true) {
-            blockDataMap.set(`${x}_${y}_${z}`, id);
+        // 修改方块，并向 Firebase 发送同步请求
+        function setBlock(x, y, z, id, updateMesh = true, syncToServer = true) {
+            const key = `${x}_${y}_${z}`;
+            blockDataMap.set(key, id);
+            
             if(updateMesh) {
                 const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
                 if(activeChunks.has(`${cx}_${cz}`)) buildChunkMesh(cx, cz);
-            }
-        }
-
-        function generateTree(bx, by, bz) {
-            const height = Math.floor(hash2(bx, bz) * 3) + 4; 
-            for(let y=0; y<height; y++) setBlock(bx, by+y, bz, 4, false); 
-            for(let x=-2; x<=2; x++) {
-                for(let z=-2; z<=2; z++) {
-                    for(let y=height-2; y<=height+1; y++) {
-                        if(Math.abs(x)===2 && Math.abs(z)===2 && y===height+1) continue; 
-                        if(x===0 && z===0 && y<height) continue; 
-                        if(getBlock(bx+x, by+y, bz+z) === 0) setBlock(bx+x, by+y, bz+z, 5, false); 
-                    }
-                }
-            }
-        }
-
-        function generateHouse(bx, by, bz) {
-            for(let x=0; x<5; x++) {
-                for(let z=0; z<5; z++) {
-                    for(let y=0; y<4; y++) {
-                        if(x===0 || x===4 || z===0 || z===4) {
-                            if(y===3) setBlock(bx+x, by+y, bz+z, 4, false); 
-                            else setBlock(bx+x, by+y, bz+z, 6, false); 
-                        }
-                        if(y===3) setBlock(bx+x, by+y, bz+z, 6, false);
-                    }
-                }
-            }
-            setBlock(bx+2, by, bz, 0, false); setBlock(bx+2, by+1, bz, 0, false); 
-            setBlock(bx, by+1, bz+2, 7, false); setBlock(bx+4, by+1, bz+2, 7, false); 
-        }
-
-        function decorateChunk(cx, cz) {
-            const key = `${cx}_${cz}`;
-            if(chunkDecorations.has(key)) return;
-            chunkDecorations.set(key, true);
-
-            for(let i=0; i<3; i++) {
-                let lx = Math.floor(hash2(cx+i, cz) * CHUNK_SIZE);
-                let lz = Math.floor(hash2(cx, cz+i) * CHUNK_SIZE);
-                let gx = cx * CHUNK_SIZE + lx, gz = cz * CHUNK_SIZE + lz;
-                let gy = getTerrainHeight(gx, gz);
-                if(gy < 50 && hash2(gx, gz) < 0.8) generateTree(gx, gy+1, gz);
+                if(x%CHUNK_SIZE===0) buildChunkMesh(cx-1, cz); if(x%CHUNK_SIZE===15) buildChunkMesh(cx+1, cz);
+                if(z%CHUNK_SIZE===0) buildChunkMesh(cx, cz-1); if(z%CHUNK_SIZE===15) buildChunkMesh(cx, cz+1);
             }
 
-            if(hash2(cx*1.1, cz*1.1) < 0.05) {
-                let gx = cx * CHUNK_SIZE + 5, gz = cz * CHUNK_SIZE + 5;
-                let gy = getTerrainHeight(gx, gz);
-                if(Math.abs(getTerrainHeight(gx+5, gz) - gy) < 2) generateHouse(gx, gy+1, gz);
+            // 【核心】联机同步逻辑
+            if (syncToServer && isMultiplayer && userId) {
+                const blockRef = doc(db, 'artifacts', appId, 'public', 'data', 'blocks', key);
+                setDoc(blockRef, { id: id, timestamp: Date.now() }).catch(e => console.error("方块同步失败", e));
             }
         }
 
         function buildChunkMesh(cx, cz) {
             const key = `${cx}_${cz}`;
-            if (activeChunks.has(key)) { activeChunks.get(key).children.forEach(m => m.dispose()); scene.remove(activeChunks.get(key)); }
+            if (activeChunks.has(key)) { activeChunks.get(key).children.forEach(m=>m.dispose()); scene.remove(activeChunks.get(key)); }
 
             const chunkGroup = new THREE.Group();
             const dummy = new THREE.Object3D();
-            const blocksByCategory = Array.from({length: 10}, () => []);
+            const blocks = Array.from({length: 8}, () => []);
 
-            for (let x = 0; x < CHUNK_SIZE; x++) {
-                for (let z = 0; z < CHUNK_SIZE; z++) {
-                    const gx = cx * CHUNK_SIZE + x, gz = cz * CHUNK_SIZE + z;
-                    const topY = getTerrainHeight(gx, gz) + 25; 
-                    for (let y = 0; y < topY; y++) {
+            for (let x=0; x<CHUNK_SIZE; x++) {
+                for (let z=0; z<CHUNK_SIZE; z++) {
+                    const gx = cx*CHUNK_SIZE+x, gz = cz*CHUNK_SIZE+z;
+                    // 高度扫描优化
+                    for (let y=0; y<40; y++) {
                         const id = getBlock(gx, y, gz);
                         if (id === 0) continue;
-                        const isVisible = getBlock(gx+1,y,gz)===0 || getBlock(gx-1,y,gz)===0 || getBlock(gx,y+1,gz)===0 || getBlock(gx,y-1,gz)===0 || getBlock(gx,y,gz+1)===0 || getBlock(gx,y,gz-1)===0 || blockDB[id].type === 'transparent';
-                        if (isVisible) blocksByCategory[id].push({x: gx, y: y, z: gz});
+                        const t = (bid) => bid===0 || blockDB[bid]?.type==='transparent';
+                        if (t(getBlock(gx+1,y,gz)) || t(getBlock(gx-1,y,gz)) || t(getBlock(gx,y+1,gz)) || t(getBlock(gx,y-1,gz)) || t(getBlock(gx,y,gz+1)) || t(getBlock(gx,y,gz-1))) {
+                            blocks[id].push({x: gx, y: y, z: gz});
+                        }
                     }
                 }
             }
 
-            for (let id = 1; id <= 8; id++) {
-                const positions = blocksByCategory[id];
-                if (positions.length === 0) continue;
-                const imesh = new THREE.InstancedMesh(blockGeometry, materials[id], positions.length);
-                for (let i = 0; i < positions.length; i++) {
-                    dummy.position.set(positions[i].x, positions[i].y, positions[i].z); dummy.updateMatrix(); imesh.setMatrixAt(i, dummy.matrix);
+            for (let id=1; id<=7; id++) {
+                if (blocks[id].length === 0) continue;
+                const imesh = new THREE.InstancedMesh(blockGeo, materials[id], blocks[id].length);
+                for (let i=0; i<blocks[id].length; i++) {
+                    dummy.position.set(blocks[id][i].x, blocks[id][i].y, blocks[id][i].z); dummy.updateMatrix(); imesh.setMatrixAt(i, dummy.matrix);
                 }
                 imesh.instanceMatrix.needsUpdate = true; chunkGroup.add(imesh);
             }
             scene.add(chunkGroup); activeChunks.set(key, chunkGroup);
         }
 
-        // ==========================================
-        // 5. 实体生物与系统
-        // ==========================================
-        const mobs = [];
-        const mobGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-        const pigMat = new THREE.MeshLambertMaterial({color: 0xffc0cb}); 
-        const zombieMat = new THREE.MeshLambertMaterial({color: 0x006400}); 
-
-        function spawnMob(type, x, y, z) {
-            if(mobs.length > 15) return; 
-            const mesh = new THREE.Mesh(mobGeo, type==='pig'?pigMat:zombieMat);
-            mesh.position.set(x, y, z);
-            scene.add(mesh);
-            mobs.push({ mesh: mesh, type: type, hp: type==='pig'?10:20, vel: new THREE.Vector3(), targetDir: new THREE.Vector3(), actionTimer: 0 });
-        }
-
-        function updateMobs(delta) {
-            document.getElementById('mob-val').innerText = mobs.length;
-            if(Math.random() < 0.02 && activeChunks.size > 0) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 15 + Math.random() * 10;
-                const sx = player.position.x + Math.cos(angle)*dist;
-                const sz = player.position.z + Math.sin(angle)*dist;
-                const sy = getTerrainHeight(sx, sz) + 1;
-                const isNight = (gameTime % 24000) > 13000 && (gameTime % 24000) < 23000;
-                spawnMob(isNight ? 'zombie' : 'pig', sx, sy, sz);
-            }
-
-            for(let i=mobs.length-1; i>=0; i--) {
-                const mob = mobs[i];
-                if(mob.mesh.position.distanceTo(player.position) > 40) {
-                    scene.remove(mob.mesh); mobs.splice(i, 1); continue;
-                }
-                mob.actionTimer -= delta;
-                if(mob.actionTimer <= 0) {
-                    mob.actionTimer = 2 + Math.random() * 3;
-                    if(mob.type === 'pig') {
-                        if(Math.random()<0.5) mob.targetDir.set(0,0,0); 
-                        else { const a = Math.random() * Math.PI * 2; mob.targetDir.set(Math.cos(a), 0, Math.sin(a)).normalize(); }
-                    } else if (mob.type === 'zombie') {
-                        mob.targetDir.subVectors(player.position, mob.mesh.position);
-                        mob.targetDir.y = 0; mob.targetDir.normalize();
-                    }
-                }
-                const speed = mob.type === 'pig' ? 1.5 : 2.5;
-                mob.vel.x = mob.targetDir.x * speed; mob.vel.z = mob.targetDir.z * speed; mob.vel.y -= GRAVITY * delta; 
-
-                let nx = mob.mesh.position.x + mob.vel.x * delta, ny = mob.mesh.position.y + mob.vel.y * delta, nz = mob.mesh.position.z + mob.vel.z * delta;
-                if(getBlock(nx, mob.mesh.position.y, mob.mesh.position.z) !== 0) nx = mob.mesh.position.x;
-                if(getBlock(mob.mesh.position.x, mob.mesh.position.y, nz) !== 0) nz = mob.mesh.position.z;
-                
-                if(getBlock(nx, ny-0.4, nz) !== 0) { 
-                    ny = Math.floor(ny-0.4) + 1.4; mob.vel.y = 0;
-                    if(mob.targetDir.length() > 0 && getBlock(nx+mob.targetDir.x, ny, nz+mob.targetDir.z) !== 0) mob.vel.y = JUMP_FORCE * 0.8; 
-                }
-                mob.mesh.position.set(nx, ny, nz);
-
-                if(mob.type === 'zombie' && !isDead && mob.mesh.position.distanceTo(player.position) < 1.5) {
-                    takeDamage(1);
-                    velocity.add(mob.targetDir.clone().multiplyScalar(10)); velocity.y = 5;
-                    mob.actionTimer = 1; 
-                }
-            }
-        }
-
-        // ==========================================
-        // 6. UI 与伤害系统
-        // ==========================================
-        function takeDamage(amt) {
-            if(isDead) return;
-            playerHP -= amt;
-            let displayHP = Math.max(0, Math.floor(playerHP));
-            let full = Math.floor(displayHP/2);
-            document.getElementById('hp-bar').innerText = '❤️'.repeat(full) + '🖤'.repeat(10 - full);
-            if(playerHP <= 0) { isDead = true; document.getElementById('death-screen').style.display = 'flex'; }
-        }
-
-        function respawn() {
-            isDead = false; playerHP = 20; takeDamage(0);
-            document.getElementById('death-screen').style.display = 'none';
-            player.position.set(0, getTerrainHeight(0,0)+10, 0);
-            velocity.set(0,0,0);
-        }
-
-        function buildHUD() {
-            const hotbarEl = document.getElementById('hotbar'); hotbarEl.innerHTML = '';
-            hotbarSlots.forEach((id, index) => {
-                const div = document.createElement('div'); div.className = 'slot' + (index === activeHotbarIndex ? ' active' : '');
-                if(id > 0 && inventory[id] > 0) {
-                    const b = blockDB[id]; div.style.backgroundImage = `url(${b.type==='multiside'?b.top.url:b.tex.url})`;
-                    div.innerHTML = `<div class="slot-count">${inventory[id]}</div>`;
-                }
-                hotbarEl.appendChild(div);
-                div.addEventListener('touchstart', (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    document.querySelector('.slot.active').classList.remove('active'); div.classList.add('active');
-                    activeHotbarIndex = index; document.getElementById('block-name').innerText = id > 0 ? blockDB[id].name : "空";
-                });
-            });
-            const activeId = hotbarSlots[activeHotbarIndex]; document.getElementById('block-name').innerText = activeId > 0 ? blockDB[activeId].name : "空";
-        }
-
-        function openInventory() {
-            isInventoryOpen = true; document.getElementById('inventory-modal').style.display = 'flex';
-            const grid = document.getElementById('inv-grid-content'); grid.innerHTML = '';
-            for(let i=1; i<=8; i++) {
-                if(inventory[i] > 0) {
-                    const b = blockDB[i]; const div = document.createElement('div');
-                    div.className = 'inv-item' + (hotbarSlots.includes(i) ? ' equipped' : '');
-                    div.style.backgroundImage = `url(${b.type==='multiside'?b.top.url:b.tex.url})`;
-                    div.innerHTML = `<div class="slot-count">${inventory[i]}</div>`;
-                    div.onclick = () => { hotbarSlots[activeHotbarIndex] = i; buildHUD(); openInventory(); };
-                    grid.appendChild(div);
-                }
-            }
-        }
-        document.getElementById('inv-btn').addEventListener('touchstart', (e) => { e.preventDefault(); openInventory(); }, {passive: false});
-        document.getElementById('close-inv').addEventListener('click', () => { isInventoryOpen = false; document.getElementById('inventory-modal').style.display = 'none'; });
-
-        function isPlayerInBlock(bx, by, bz) {
-            const minX = player.position.x - 0.3, maxX = player.position.x + 0.3;
-            const minY = player.position.y, maxY = player.position.y + 1.7;
-            const minZ = player.position.z - 0.3, maxZ = player.position.z + 0.3;
-            const bMinX = bx - 0.5, bMaxX = bx + 0.5, bMinY = by - 0.5, bMaxY = by + 0.5, bMinZ = bz - 0.5, bMaxZ = bz + 0.5;
-            return (minX < bMaxX && maxX > bMinX) && (minY < bMaxY && maxY > bMinY) && (minZ < bMaxZ && maxZ > bMinZ);
-        }
-
-        function initTouchControls() {
-            const joystickBase = document.getElementById('joystick-base'); const joystickKnob = document.getElementById('joystick-knob'); const intro = document.getElementById('intro-text');
-            const bindBtn = (id, fn) => { const b = document.getElementById(id); b.addEventListener('touchstart', (e) => { e.preventDefault(); b.style.background='rgba(255,255,255,0.4)'; fn(); }, {passive:false}); b.addEventListener('touchend', (e) => { e.preventDefault(); b.style.background='rgba(255,255,255,0.15)'; }, {passive:false}); };
-
-            bindBtn('jump-btn', () => { if(canJump && !isDead){ velocity.y = JUMP_FORCE; canJump = false; }});
-            bindBtn('break-btn', () => {
-                if(targetBlockData && !isInventoryOpen && !isDead) {
-                    const p = targetBlockData.pos; const id = getBlock(p.x, p.y, p.z);
-                    if(id === 8) return; 
-                    setBlock(p.x, p.y, p.z, 0); inventory[id]++; buildHUD(); selectionBox.visible = false; targetBlockData = null;
-                }
-            });
-            bindBtn('place-btn', () => {
-                if(targetBlockData && !isInventoryOpen && !isDead) {
-                    const activeBlockId = hotbarSlots[activeHotbarIndex];
-                    if(activeBlockId > 0 && inventory[activeBlockId] > 0) {
-                        const norm = targetBlockData.normal; const p = targetBlockData.pos;
-                        const nx = Math.round(p.x + norm.x), ny = Math.round(p.y + norm.y), nz = Math.round(p.z + norm.z);
-                        if (!isPlayerInBlock(nx, ny, nz)) { 
-                            setBlock(nx, ny, nz, activeBlockId); inventory[activeBlockId]--; buildHUD();
-                        }
-                    }
-                }
-            });
-
-            document.addEventListener('touchstart', (e) => {
-                if(isInventoryOpen || isDead || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal')) return;
-                e.preventDefault(); intro.style.opacity = '0';
-                for(let i=0; i<e.changedTouches.length; i++) {
-                    let t = e.changedTouches[i];
-                    if(t.clientX < window.innerWidth/2) {
-                        if(moveTouchId===null) {
-                            moveTouchId = t.identifier; joystickStartX = t.clientX; joystickStartY = t.clientY;
-                            joystickBase.style.display='block'; joystickBase.style.left=t.clientX+'px'; joystickBase.style.top=t.clientY+'px';
-                            joystickKnob.style.transform=`translate(0,0)`;
-                        }
-                    } else { if(lookTouchId===null) { lookTouchId = t.identifier; touchesData[t.identifier] = {x:t.clientX, y:t.clientY}; } }
-                }
-            }, {passive:false});
-
-            document.addEventListener('touchmove', (e) => {
-                if(isInventoryOpen || isDead || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal')) return;
-                e.preventDefault();
-                for(let i=0; i<e.changedTouches.length; i++) {
-                    let t = e.changedTouches[i];
-                    if(t.identifier === moveTouchId) {
-                        let dx = t.clientX - joystickStartX, dy = t.clientY - joystickStartY;
-                        let dist = Math.sqrt(dx*dx + dy*dy); if(dist > 35) { dx = (dx/dist)*35; dy = (dy/dist)*35; }
-                        joystickKnob.style.transform=`translate(${dx}px, ${dy}px)`; moveX = dx/35; moveZ = dy/35;
-                    } else if (t.identifier === lookTouchId) {
-                        let dx = t.clientX - touchesData[t.identifier].x, dy = t.clientY - touchesData[t.identifier].y;
-                        player.rotation.y -= dx * 0.007; pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x - dy * 0.007));
-                        touchesData[t.identifier] = {x:t.clientX, y:t.clientY};
-                    }
-                }
-            }, {passive:false});
-
-            const endTouch = (e) => {
-                for(let i=0; i<e.changedTouches.length; i++) {
-                    let t = e.changedTouches[i];
-                    if(t.identifier === moveTouchId) { moveTouchId = null; moveX=0; moveZ=0; joystickBase.style.display='none'; }
-                    if(t.identifier === lookTouchId) { lookTouchId = null; delete touchesData[t.identifier]; }
-                }
-            };
-            document.addEventListener('touchend', endTouch); document.addEventListener('touchcancel', endTouch);
-        }
-
-        function checkCollision(px, py, pz) {
-            const minX = Math.floor(px - 0.3 + 0.5), maxX = Math.floor(px + 0.3 + 0.5);
-            const minY = Math.floor(py + 0.5), maxY = Math.floor(py + 1.7 + 0.5);
-            const minZ = Math.floor(pz - 0.3 + 0.5), maxZ = Math.floor(pz + 0.3 + 0.5);
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    for (let z = minZ; z <= maxZ; z++) { if (getBlock(x, y, z) !== 0) return true; }
-                }
-            }
-            return false;
-        }
-
         function updateChunks() {
             const px = Math.floor(player.position.x / CHUNK_SIZE), pz = Math.floor(player.position.z / CHUNK_SIZE);
             if (px !== currentChunkX || pz !== currentChunkZ) {
                 currentChunkX = px; currentChunkZ = pz;
-                const keepChunks = new Set();
-                for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
-                    for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
-                        const cx = px + dx, cz = pz + dz, key = `${cx}_${cz}`;
-                        keepChunks.add(key);
-                        decorateChunk(cx, cz); 
+                const keep = new Set();
+                for (let dx=-RENDER_DISTANCE; dx<=RENDER_DISTANCE; dx++) {
+                    for (let dz=-RENDER_DISTANCE; dz<=RENDER_DISTANCE; dz++) {
+                        const cx=px+dx, cz=pz+dz, key=`${cx}_${cz}`; keep.add(key);
                         if (!activeChunks.has(key)) buildChunkMesh(cx, cz); 
                     }
                 }
                 for (const [key, group] of activeChunks.entries()) {
-                    if (!keepChunks.has(key)) { group.children.forEach(m => m.dispose()); scene.remove(group); activeChunks.delete(key); }
+                    if (!keep.has(key)) { group.children.forEach(m=>m.dispose()); scene.remove(group); activeChunks.delete(key); }
                 }
             }
         }
 
+        // ==========================================
+        // 5. 控制与 UI
+        // ==========================================
+        function buildHUD() {
+            const el = document.getElementById('hotbar'); el.innerHTML = '';
+            hotbarSlots.forEach((id, idx) => {
+                const div = document.createElement('div'); div.className = 'slot'+(idx===activeHotbarIndex?' active':'');
+                div.style.backgroundImage = `url(${blockDB[id].type==='multiside'?blockDB[id].top.url:blockDB[id].tex.url})`;
+                el.appendChild(div);
+                div.onclick = () => { document.querySelector('.slot.active').classList.remove('active'); div.classList.add('active'); activeHotbarIndex = idx; document.getElementById('block-name').innerText=blockDB[id].name; };
+            });
+            document.getElementById('block-name').innerText=blockDB[hotbarSlots[activeHotbarIndex]].name;
+        }
+
+        let moveTouchId = null, lookTouchId = null, joyStartX = 0, joyStartY = 0;
+        function initControls() {
+            const jBase = document.getElementById('joystick-base'), jKnob = document.getElementById('joystick-knob');
+            const bindBtn = (id, fn) => { const b=document.getElementById(id); b.addEventListener('touchstart',e=>{e.preventDefault();b.style.background='rgba(255,255,255,0.4)';fn();},{passive:false}); b.addEventListener('touchend',e=>{e.preventDefault();b.style.background='rgba(255,255,255,0.15)';},{passive:false});};
+            
+            bindBtn('jump-btn', () => { if(canJump){ velocity.y = JUMP_FORCE; canJump = false; }});
+            bindBtn('break-btn', () => {
+                if(targetBlockData) { setBlock(targetBlockData.pos.x, targetBlockData.pos.y, targetBlockData.pos.z, 0); selectionBox.visible=false; targetBlockData=null; }
+            });
+            bindBtn('place-btn', () => {
+                if(targetBlockData) {
+                    const norm = targetBlockData.normal, p = targetBlockData.pos;
+                    const nx = Math.round(p.x+norm.x), ny = Math.round(p.y+norm.y), nz = Math.round(p.z+norm.z);
+                    const minX=player.position.x-0.3, maxX=player.position.x+0.3, minY=player.position.y, maxY=player.position.y+1.7, minZ=player.position.z-0.3, maxZ=player.position.z+0.3;
+                    if (!((minX < nx+0.5 && maxX > nx-0.5) && (minY < ny+0.5 && maxY > ny-0.5) && (minZ < nz+0.5 && maxZ > nz-0.5))) {
+                        setBlock(nx, ny, nz, hotbarSlots[activeHotbarIndex]);
+                    }
+                }
+            });
+
+            document.addEventListener('touchstart', e => {
+                if(e.target.closest('.btn') || e.target.closest('#hotbar-container')) return;
+                for(let i=0; i<e.changedTouches.length; i++) { let t = e.changedTouches[i];
+                    if(t.clientX < window.innerWidth/2) { if(moveTouchId===null) { moveTouchId=t.identifier; joyStartX=t.clientX; joyStartY=t.clientY; jBase.style.display='block'; jBase.style.left=t.clientX+'px'; jBase.style.top=t.clientY+'px'; jKnob.style.transform=`translate(0,0)`; } } 
+                    else { if(lookTouchId===null) { lookTouchId=t.identifier; touchesData[t.identifier]={x:t.clientX,y:t.clientY}; } }
+                }
+            }, {passive:false});
+
+            document.addEventListener('touchmove', e => {
+                if(e.target.closest('.btn') || e.target.closest('#hotbar-container')) return; e.preventDefault();
+                for(let i=0; i<e.changedTouches.length; i++) { let t = e.changedTouches[i];
+                    if(t.identifier===moveTouchId) { let dx=t.clientX-joyStartX, dy=t.clientY-joyStartY; let dist=Math.sqrt(dx*dx+dy*dy); if(dist>35){dx=(dx/dist)*35; dy=(dy/dist)*35;} jKnob.style.transform=`translate(${dx}px, ${dy}px)`; moveX=dx/35; moveZ=dy/35; }
+                    else if(t.identifier===lookTouchId) { let dx=t.clientX-touchesData[t.identifier].x, dy=t.clientY-touchesData[t.identifier].y; player.rotation.y -= dx*0.007; pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x-dy*0.007)); touchesData[t.identifier]={x:t.clientX,y:t.clientY}; }
+                }
+            }, {passive:false});
+
+            const endT = e => { for(let i=0; i<e.changedTouches.length; i++) { let t=e.changedTouches[i]; if(t.identifier===moveTouchId){moveTouchId=null;moveX=0;moveZ=0;jBase.style.display='none';} if(t.identifier===lookTouchId){lookTouchId=null;delete touchesData[t.identifier];} } };
+            document.addEventListener('touchend', endT); document.addEventListener('touchcancel', endT);
+        }
+
+        // ==========================================
+        // 6. 物理碰撞与渲染循环
+        // ==========================================
+        function checkCollision(px, py, pz) {
+            const minX=Math.floor(px-0.3+0.5), maxX=Math.floor(px+0.3+0.5), minY=Math.floor(py+0.5), maxY=Math.floor(py+1.7+0.5), minZ=Math.floor(pz-0.3+0.5), maxZ=Math.floor(pz+0.3+0.5);
+            for(let x=minX; x<=maxX; x++){ for(let y=minY; y<=maxY; y++){ for(let z=minZ; z<=maxZ; z++){ if(getBlock(x,y,z)!==0) return true; } } } return false;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
-            if(isInventoryOpen) return;
-            const time = performance.now();
-            const delta = Math.min((time - prevTime) / 1000, 0.1);
+            const time = performance.now(), delta = Math.min((time-prevTime)/1000, 0.1);
             
-            gameTime = (gameTime + delta * 200) % 24000;
-            const hour = gameTime / 1000;
-            const cycle = (Math.sin((hour / 24) * Math.PI * 2 - Math.PI/2) + 1) / 2;
-            skyColor.lerpColors(new THREE.Color(0x050510), new THREE.Color(0x87CEEB), cycle);
-            hemiLight.intensity = 0.1 + cycle * 0.6;
-            sunLight.intensity = Math.max(0, cycle - 0.2); 
-            scene.background = skyColor; fog.color = skyColor;
-            const dHour = Math.floor((hour + 6) % 24);
-            document.getElementById('time-val').innerText = `${dHour.toString().padStart(2,'0')}:00`;
+            updateChunks();
 
-            if(!isDead) {
-                updateChunks();
+            // 射线检测
+            const interactables = []; activeChunks.forEach(g=>interactables.push(...g.children));
+            raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = raycaster.intersectObjects(interactables);
+            if(intersects.length>0 && intersects[0].distance<6) {
+                const hit=intersects[0], mat=new THREE.Matrix4(); hit.object.getMatrixAt(hit.instanceId,mat);
+                const pos = new THREE.Vector3().setFromMatrixPosition(mat); pos.x=Math.round(pos.x); pos.y=Math.round(pos.y); pos.z=Math.round(pos.z);
+                targetBlockData = {pos:pos, normal:hit.face.normal}; selectionBox.position.copy(pos); selectionBox.visible=true;
+            } else { targetBlockData=null; selectionBox.visible=false; }
 
-                const interactables = []; activeChunks.forEach(g => interactables.push(...g.children));
-                raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-                const intersects = raycaster.intersectObjects(interactables);
-                if(intersects.length > 0 && intersects[0].distance < 6) {
-                    const hit = intersects[0]; const mat = new THREE.Matrix4(); hit.object.getMatrixAt(hit.instanceId, mat);
-                    const pos = new THREE.Vector3().setFromMatrixPosition(mat);
-                    pos.x = Math.round(pos.x); pos.y = Math.round(pos.y); pos.z = Math.round(pos.z);
-                    targetBlockData = { pos: pos, normal: hit.face.normal };
-                    selectionBox.position.copy(pos); selectionBox.visible = true;
-                } else { targetBlockData = null; selectionBox.visible = false; }
+            // 物理
+            velocity.y -= GRAVITY*delta; velocity.y = Math.max(velocity.y, -40);
+            const moveVec = new THREE.Vector3(moveX, 0, moveZ); if(moveVec.length()>1) moveVec.normalize(); moveVec.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
+            let nx=player.position.x+moveVec.x*SPEED*delta, ny=player.position.y+velocity.y*delta, nz=player.position.z+moveVec.z*SPEED*delta;
+            if(checkCollision(nx,player.position.y,player.position.z)) nx=player.position.x;
+            if(checkCollision(nx,player.position.y,nz)) nz=player.position.z;
+            if(checkCollision(nx,ny,nz)) { if(velocity.y<0){ny=Math.ceil(ny-0.5)+0.5; velocity.y=0; canJump=true;} else{ny=Math.floor(ny+1.7+0.5)-1.7-0.5; velocity.y=0;} } else { canJump=false; }
+            player.position.set(nx,ny,nz);
+            
+            if(ny < -10) { player.position.set(0,30,0); velocity.set(0,0,0); }
 
-                updateMobs(delta);
+            document.getElementById('pos-val').innerText = `${Math.floor(nx)}, ${Math.floor(ny)}, ${Math.floor(nz)}`;
+            
+            syncPlayerTransform(); // 推送给服务器
 
-                velocity.y -= GRAVITY * delta; velocity.y = Math.max(velocity.y, -40);
-                const moveVec = new THREE.Vector3(moveX, 0, moveZ);
-                if(moveVec.length() > 1) moveVec.normalize(); moveVec.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-
-                let nx = player.position.x + moveVec.x * SPEED * delta, ny = player.position.y + velocity.y * delta, nz = player.position.z + moveVec.z * SPEED * delta;
-                if(checkCollision(nx, player.position.y, player.position.z)) nx = player.position.x;
-                if(checkCollision(nx, player.position.y, nz)) nz = player.position.z;
-                if(checkCollision(nx, ny, nz)) {
-                    if(velocity.y < 0) { ny = Math.ceil(ny - 0.5) + 0.5; velocity.y = 0; canJump = true; } 
-                    else { ny = Math.floor(ny + 1.7 + 0.5) - 1.7 - 0.5; velocity.y = 0; }
-                } else { canJump = false; }
-                player.position.set(nx, ny, nz);
-
-                if(ny < -10) takeDamage(20); 
-
-                document.getElementById('pos-val').innerText = `${Math.floor(nx)}, ${Math.floor(ny)}, ${Math.floor(nz)}`;
-            }
+            // 清理僵尸玩家 (超时未发数据)
+            const now = Date.now();
+            otherPlayers.forEach((p, id) => { if(now - p.lastUpdate > 10000) removeOtherPlayer(id); });
+            document.getElementById('players-val').innerText = otherPlayers.size + 1;
 
             prevTime = time; renderer.render(scene, camera);
         }
     </script>
 </body>
 </html>
-
 
 ```
