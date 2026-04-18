@@ -2,53 +2,126 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Web - 高级重力版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Web - iPad 触控版</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; pointer-events: none; z-index: 100; }
-        #ui { position: absolute; bottom: 20px; left: 20px; color: white; text-shadow: 1px 1px 2px black; }
-        #blocker { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; color: white; z-index: 10; }
-        #instructions { text-align: center; cursor: pointer; padding: 40px; border: 2px solid white; background: rgba(0,0,0,0.3); }
+        /* 基础重置与防误触设置 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #87CEEB; 
+            font-family: 'Segoe UI', sans-serif;
+            /* 关键：阻止 iPad 默认的页面滑动、下拉刷新和双击放大 */
+            touch-action: none; 
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        /* 准星 */
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 2px black;}
+        
+        /* 状态 UI */
+        #ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 1px 1px 2px black; z-index: 100; pointer-events: none;}
+        
+        /* 新手引导文案 */
+        #intro-text { position: absolute; top: 40%; width: 100%; text-align: center; color: white; font-size: 22px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; z-index: 50;}
+
+        /* --- 虚拟触控 UI 开始 --- */
+        /* 右下角跳跃按钮 */
+        #jump-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        /* 左侧动态摇杆底座 */
+        #joystick-base {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: none; /* 默认隐藏，手指按下左侧时显示 */
+            z-index: 100;
+            transform: translate(-50%, -50%); /* 让中心点对准手指 */
+            pointer-events: none; 
+        }
+
+        /* 摇杆中心小圆圈 */
+        #joystick-knob {
+            position: absolute;
+            top: 35px; /* (120-50)/2 */
+            left: 35px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
     <div id="crosshair">+</div>
-    <div id="ui">高度 (Y): <span id="height-val">0</span></div>
-    <div id="blocker">
-        <div id="instructions">
-            <h1>点击屏幕进入世界</h1>
-            <p>WASD 移动 | <b>SPACE 跳跃</b> | 鼠标转动视角</p>
-            <p style="color: #aaa;">(若无法开始，请刷新并确保点击了方框内部)</p>
-        </div>
+    <div id="ui">高度 (Y): <span id="height-val">0.00</span></div>
+    
+    <div id="intro-text">
+        👈 <b>左半屏</b>：滑动移动 <br><br> <b>右半屏</b>：滑动视角 👉
+    </div>
+
+    <div id="jump-btn">跳跃</div>
+    <div id="joystick-base">
+        <div id="joystick-knob"></div>
     </div>
 
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
             }
         }
     </script>
 
     <script type="module">
         import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
         // --- 核心变量 ---
-        let scene, camera, renderer, controls;
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
+        let scene, camera, renderer;
+        let player, pitchObject; // 用于替代 PC 端控制器的物理载体
         
         // 物理参数
-        let velocity = new THREE.Vector3(); // 瞬时速度
-        let direction = new THREE.Vector3(); // 移动方向
-        const GRAVITY = 30.0;    // 重力强度
-        const JUMP_FORCE = 12.0; // 跳跃力度
-        const PLAYER_HEIGHT = 1.8; // 玩家身高（米）
-        
+        let velocity = new THREE.Vector3(); 
+        const GRAVITY = 30.0;    
+        const JUMP_FORCE = 12.0; 
+        let canJump = true;
         let prevTime = performance.now();
 
+        // 触控摇杆输入值 (-1.0 到 1.0)
+        let moveX = 0; 
+        let moveZ = 0; 
+
+        // 触控状态追踪
+        let moveTouchId = null;
+        let lookTouchId = null;
+        let joystickStartX = 0;
+        let joystickStartY = 0;
+        const touchesData = {}; // 记录滑动视角的上一帧位置
+
         init();
+        initTouchControls();
         animate();
 
         function init() {
@@ -56,48 +129,25 @@
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 0, 100);
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            // 初始高度设为 5
-            camera.position.y = 5;
-
+            // 光照
             const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.5);
             scene.add(light);
 
-            controls = new PointerLockControls(camera, document.body);
-            
-            const blocker = document.getElementById('blocker');
-            blocker.addEventListener('click', () => controls.lock());
-            controls.addEventListener('lock', () => blocker.style.display = 'none');
-            controls.addEventListener('unlock', () => blocker.style.display = 'flex');
-            scene.add(controls.getObject());
+            // --- 玩家实体构建 (核心改动) ---
+            player = new THREE.Group(); 
+            player.position.set(0, 5, 0); // 初始生成位置
+            scene.add(player);
 
-            // 键盘逻辑
-            const onKeyDown = (e) => {
-                switch (e.code) {
-                    case 'KeyW': moveForward = true; break;
-                    case 'KeyS': moveBackward = true; break;
-                    case 'KeyA': moveLeft = true; break;
-                    case 'KeyD': moveRight = true; break;
-                    case 'Space': 
-                        if (canJump) velocity.y += JUMP_FORCE; 
-                        canJump = false; 
-                        break;
-                }
-            };
-            const onKeyUp = (e) => {
-                switch (e.code) {
-                    case 'KeyW': moveForward = false; break;
-                    case 'KeyS': moveBackward = false; break;
-                    case 'KeyA': moveLeft = false; break;
-                    case 'KeyD': moveRight = false; break;
-                }
-            };
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
+            // 上下看（俯仰角）独立载体，防止万向节死锁
+            pitchObject = new THREE.Group();
+            pitchObject.position.y = 1.8; // 眼睛高度
+            player.add(pitchObject);
 
-            // 生成地面 (Minecraft 风格方块)
-            const boxSize = 1;
-            const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            pitchObject.add(camera);
+
+            // 生成地面
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
             const material = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
 
             for (let x = -20; x < 20; x++) {
@@ -110,7 +160,7 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(window.devicePixelRatio); // 适配 iPad 视网膜屏幕
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', () => {
@@ -120,48 +170,170 @@
             });
         }
 
+        // --- 核心：iPad 触控事件解析 ---
+        function initTouchControls() {
+            const joystickBase = document.getElementById('joystick-base');
+            const joystickKnob = document.getElementById('joystick-knob');
+            const jumpBtn = document.getElementById('jump-btn');
+            const introText = document.getElementById('intro-text');
+
+            // 1. 跳跃按钮逻辑 (独立处理，防止干扰全局拖动)
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // 阻止事件冒泡到 document
+                if (canJump) {
+                    velocity.y = JUMP_FORCE;
+                    canJump = false;
+                }
+                jumpBtn.style.background = 'rgba(255, 255, 255, 0.5)'; // 按下视觉反馈
+            }, {passive: false});
+
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                jumpBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+            }, {passive: false});
+
+            // 2. 屏幕全局触控逻辑 (摇杆与视角)
+            document.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                introText.style.opacity = '0'; // 第一次触摸时隐藏提示
+
+                for(let i = 0; i < e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+                    
+                    // 判断触摸位置是否在屏幕左半边
+                    if (t.clientX < window.innerWidth / 2) {
+                        // 左半边：激活移动摇杆
+                        if (moveTouchId === null) {
+                            moveTouchId = t.identifier;
+                            joystickStartX = t.clientX;
+                            joystickStartY = t.clientY;
+                            
+                            // 显示摇杆 UI
+                            joystickBase.style.display = 'block';
+                            joystickBase.style.left = joystickStartX + 'px';
+                            joystickBase.style.top = joystickStartY + 'px';
+                            joystickKnob.style.transform = `translate(0px, 0px)`;
+                        }
+                    } else {
+                        // 右半边：激活视角转动
+                        if (lookTouchId === null) {
+                            lookTouchId = t.identifier;
+                            touchesData[lookTouchId] = { x: t.clientX, y: t.clientY };
+                        }
+                    }
+                }
+            }, {passive: false});
+
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for(let i = 0; i < e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+
+                    // 处理移动摇杆滑动
+                    if (t.identifier === moveTouchId) {
+                        let deltaX = t.clientX - joystickStartX;
+                        let deltaY = t.clientY - joystickStartY;
+                        
+                        // 限制摇杆最大拖拽半径为 50px
+                        let distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+                        let maxDist = 50;
+
+                        if (distance > maxDist) {
+                            deltaX = (deltaX / distance) * maxDist;
+                            deltaY = (deltaY / distance) * maxDist;
+                        }
+
+                        // 更新摇杆UI位置
+                        joystickKnob.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                        
+                        // 将像素位移映射为 -1.0 到 1.0 的引擎输入信号
+                        moveX = deltaX / maxDist;
+                        moveZ = deltaY / maxDist;
+
+                    } 
+                    // 处理右侧视角滑动
+                    else if (t.identifier === lookTouchId) {
+                        let lastX = touchesData[lookTouchId].x;
+                        let lastY = touchesData[lookTouchId].y;
+
+                        let deltaX = t.clientX - lastX;
+                        let deltaY = t.clientY - lastY;
+
+                        // 视角旋转敏感度设置 (0.008 弧度/像素)
+                        player.rotation.y -= deltaX * 0.008; // 左右转头
+                        pitchObject.rotation.x -= deltaY * 0.008; // 上下看
+                        
+                        // 限制脖子不要折断 (限制在正负90度)
+                        pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x));
+
+                        // 记录当前位置供下一帧计算
+                        touchesData[lookTouchId].x = t.clientX;
+                        touchesData[lookTouchId].y = t.clientY;
+                    }
+                }
+            }, {passive: false});
+
+            // 手指离开屏幕
+            const onTouchEnd = (e) => {
+                e.preventDefault();
+                for(let i = 0; i < e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+
+                    if (t.identifier === moveTouchId) {
+                        moveTouchId = null;
+                        moveX = 0; // 停止移动
+                        moveZ = 0;
+                        joystickBase.style.display = 'none'; // 隐藏摇杆 UI
+                    } else if (t.identifier === lookTouchId) {
+                        lookTouchId = null;
+                        delete touchesData[t.identifier];
+                    }
+                }
+            };
+
+            document.addEventListener('touchend', onTouchEnd, {passive: false});
+            document.addEventListener('touchcancel', onTouchEnd, {passive: false});
+        }
+
+        // --- 物理引擎与渲染循环 ---
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
             const delta = (time - prevTime) / 1000;
 
-            if (controls.isLocked) {
-                // 1. 水平摩擦力处理 (空气阻力)
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
+            // 1. 摩擦力 (滑行衰减)
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            // 2. 重力
+            velocity.y -= GRAVITY * delta; 
 
-                // 2. 重力处理
-                velocity.y -= GRAVITY * delta; 
+            // 3. 计算摇杆产生的移动向量
+            const moveVector = new THREE.Vector3(moveX, 0, moveZ);
+            // 限制最大推力，允许缓慢推杆慢走
+            if (moveVector.length() > 1) moveVector.normalize();
+            
+            // 确保你往视角看的前方移动，而不是世界坐标的前方
+            moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
 
-                // 3. 计算方向
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
+            // 应用推力 (60.0 为移动速度调节常数)
+            velocity.x += moveVector.x * 60.0 * delta;
+            velocity.z += moveVector.z * 60.0 * delta;
 
-                // 4. 应用推力
-                if (moveForward || moveBackward) velocity.z -= direction.z * 100.0 * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * 100.0 * delta;
+            // 应用位移更新
+            player.position.x += velocity.x * delta;
+            player.position.z += velocity.z * delta;
+            player.position.y += velocity.y * delta;
 
-                // 5. 应用位移
-                controls.moveRight(-velocity.x * delta);
-                controls.moveForward(-velocity.z * delta);
-                
-                // 高度/跳跃位移
-                const playerObj = controls.getObject();
-                playerObj.position.y += (velocity.y * delta);
-
-                // 6. 简单的地面碰撞检测 (高度机制)
-                // 假设地面高度为 0.5 (方块中心在0，高度1)，眼睛高度为地面+PLAYER_HEIGHT
-                const groundLevel = 0.5 + PLAYER_HEIGHT;
-                if (playerObj.position.y < groundLevel) {
-                    velocity.y = 0;
-                    playerObj.position.y = groundLevel;
-                    canJump = true;
-                }
-
-                // 更新UI显示高度
-                document.getElementById('height-val').innerText = (playerObj.position.y - groundLevel).toFixed(2);
+            // 4. 地面碰撞检测
+            const groundLevel = 0.5; // 方块顶部高度为 0.5 (因为方块中心在 Y=0)
+            if (player.position.y < groundLevel) {
+                velocity.y = 0;
+                player.position.y = groundLevel;
+                canJump = true;
             }
+
+            // 更新 UI 高度显示 (玩家脚部距离地面的高度)
+            document.getElementById('height-val').innerText = (player.position.y - groundLevel).toFixed(2);
 
             prevTime = time;
             renderer.render(scene, camera);
