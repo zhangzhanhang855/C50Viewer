@@ -4,11 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Web - 终极防崩溃版</title>
+    <title>Minecraft Web - 终极红石命令版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
         
-        /* 加载与错误界面 */
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #222; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; font-size: 24px; font-weight: bold; }
         .spinner { margin-top: 20px; width: 40px; height: 40px; border: 5px solid #4CAF50; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -16,14 +15,13 @@
         #error-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(200,0,0,0.9); color: white; z-index: 10000; display: none; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         #error-log { font-family: monospace; font-size: 14px; white-space: pre-wrap; margin-top: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;}
 
-        /* 准星与 UI */
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.9); font-size: 22px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 0px #000;}
         #ui { position: absolute; top: 15px; left: 15px; color: white; text-shadow: 1px 1px 2px black; z-index: 100; pointer-events: none;}
         #hp-bar { font-size: 16px; margin-bottom: 5px; letter-spacing: 2px;}
         #info-panel { font-size: 12px; color: #ddd; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 5px; line-height: 1.5;}
 
         /* /title 屏幕大字系统 */
-        #title-overlay { position: fixed; top: 30%; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 80; opacity: 0; transition: opacity 0.5s; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;}
+        #title-overlay { position: fixed; top: 30%; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; z-index: 80; opacity: 0; transition: opacity 0.2s; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;}
         #title-text { font-size: 50px; color: #ffaa00; font-weight: bold; text-align: center;}
         #subtitle-text { font-size: 24px; color: #ffffff; margin-top: 10px; font-weight: bold; text-align: center;}
 
@@ -50,15 +48,17 @@
         .slot.active { border: 3px solid #fff; transform: translateY(-4px); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
         .slot-count { position: absolute; bottom: 0; right: 2px; color: white; font-size: 10px; text-shadow: 1px 1px 0 #000; font-weight: bold;}
 
-        /* 命令方块 UI */
-        #cb-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 400px; background: #c6c6c6; border: 4px solid #555; border-radius: 5px; z-index: 250; display: none; flex-direction: column; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);}
+        /* 高级命令方块 UI */
+        #cb-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: #c6c6c6; border: 4px solid #555; border-radius: 5px; z-index: 250; display: none; flex-direction: column; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); box-sizing: border-box;}
         #cb-title { text-align: center; font-weight: bold; margin-bottom: 10px; color: #333; font-size: 18px;}
-        #cb-input { width: 100%; height: 40px; background: #fff; color: #000; border: 2px solid #333; padding: 5px; font-family: monospace; font-size: 16px; box-sizing: border-box; margin-bottom: 15px;}
-        .cb-btn-group { display: flex; justify-content: space-between; }
+        #cb-input { width: 100%; height: 40px; background: #fff; color: #000; border: 2px solid #333; padding: 5px; font-family: monospace; font-size: 14px; box-sizing: border-box; margin-bottom: 10px;}
+        .cb-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: #333; font-weight: bold; font-size: 14px;}
+        .cb-row select, .cb-row input { padding: 4px; font-size: 14px; background: #fff; border: 2px solid #555; color: #000; font-weight: bold;}
+        .cb-btn-group { display: flex; justify-content: space-between; margin-top: 5px;}
         .cb-btn { padding: 8px 20px; font-weight: bold; border: 2px solid #333; background: #888; color: white; cursor: pointer;}
         .cb-btn.done { background: #4CAF50; }
 
-        /* 背包系统 */
+        /* 背包与聊天 */
         #inventory-modal { position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; background: rgba(30,30,30,0.95); border: 4px solid #555; border-radius: 10px; z-index: 200; display: none; flex-direction: column; box-sizing: border-box; padding: 10px; color: white;}
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 10px;}
         .close-btn { background: #d32f2f; color: white; border: 2px solid #ff5252; padding: 5px 15px; font-weight: bold; border-radius: 5px;}
@@ -68,7 +68,6 @@
         .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; }
         .inv-item { width: 40px; height: 40px; border: 2px solid #777; position: relative; background-size: cover; image-rendering: pixelated;}
 
-        /* 聊天系统 */
         #chat-modal { position: absolute; bottom: 80px; left: 10px; width: 60%; max-width: 400px; display: none; flex-direction: column; z-index: 250;}
         #chat-log { max-height: 150px; overflow-y: hidden; color: white; font-size: 14px; text-shadow: 1px 1px 1px #000; margin-bottom: 5px; pointer-events: none;}
         #chat-input-wrapper { display: flex; }
@@ -79,47 +78,65 @@
         #respawn-btn { margin-top: 20px; padding: 10px 20px; font-size: 20px; background: #555; color: white; border: 2px solid white; border-radius: 5px; cursor: pointer; }
     </style>
     <script>
-        // 终极护城河：全局错误捕获器，一旦出错立刻显示红屏，拒绝盲目转圈！
         window.addEventListener('error', function(e) {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('error-screen').style.display = 'block';
-            document.getElementById('error-log').innerText += e.message + '\n位于: ' + e.filename + ':' + e.lineno + '\n\n';
+            const ls = document.getElementById('loading-screen'); if(ls) ls.style.display = 'none';
+            const es = document.getElementById('error-screen');
+            if(es) { es.style.display = 'block'; document.getElementById('error-log').innerText += e.message + '\n位于: ' + e.filename + ':' + e.lineno + '\n\n'; }
         });
     </script>
 </head>
 <body>
     <div id="error-screen">
         <h2 style="margin-top:0;">⚠️ 游戏引擎崩溃了</h2>
-        <div style="font-size: 14px;">这通常是由于浏览器不支持某些渲染指令导致的。错误日志：</div>
+        <div style="font-size: 14px;">错误日志：</div>
         <div id="error-log"></div>
-        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; font-size:16px;">重新加载页面</button>
+        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; font-size:16px;">重新加载</button>
     </div>
 
-    <div id="loading-screen"><div>正在生成命令引擎与世界...</div><div class="spinner"></div></div>
+    <div id="loading-screen"><div>注入红石命令引擎中...</div><div class="spinner"></div></div>
     
     <div id="title-overlay"><div id="title-text"></div><div id="subtitle-text"></div></div>
 
     <div id="crosshair">+</div>
+    
     <div id="ui">
         <div id="hp-bar">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
         <div id="info-panel">
             坐标: <span id="pos-val">0, 0, 0</span><br>
             时间: <span id="time-val">00:00</span><br>
-            模式: <span id="mode-val">创造模式</span>
+            模式: <span id="mode-val">创造模式</span><br>
+            实体: <span id="mob-val">0</span>
         </div>
     </div>
     
     <div id="chat-modal">
         <div id="chat-log"></div>
-        <div id="chat-input-wrapper">
-            <input type="text" id="chat-input" placeholder="输入 /help 了解指令..." autocomplete="off">
-            <button id="chat-send">▶</button>
-        </div>
+        <div id="chat-input-wrapper"><input type="text" id="chat-input" placeholder="输入 /help..." autocomplete="off"><button id="chat-send">▶</button></div>
     </div>
 
+    <!-- 高级命令方块控制台 -->
     <div id="cb-modal">
         <div id="cb-title">命令方块控制台</div>
         <input type="text" id="cb-input" placeholder="输入控制台命令..." autocomplete="off">
+        <div class="cb-row">
+            <label>方块类型:</label>
+            <select id="cb-type">
+                <option value="impulse">脉冲 (Impulse)</option>
+                <option value="chain">连锁 (Chain)</option>
+                <option value="repeat">循环 (Repeat)</option>
+            </select>
+        </div>
+        <div class="cb-row">
+            <label>条件:</label>
+            <select id="cb-active">
+                <option value="redstone">需要红石</option>
+                <option value="always">保持开启</option>
+            </select>
+        </div>
+        <div class="cb-row">
+            <label>执行延迟(Tick):</label>
+            <input type="number" id="cb-delay" value="0" min="0" max="1200" style="width: 80px;">
+        </div>
         <div class="cb-btn-group">
             <button class="cb-btn done" id="cb-save">完成</button>
             <button class="cb-btn" id="cb-cancel">取消</button>
@@ -136,42 +153,32 @@
     <div id="chat-btn" class="btn">💬</div>
     <div id="joystick-base"><div id="joystick-knob"></div></div>
 
-    <div id="hotbar-container">
-        <div id="block-name">草方块</div>
-        <div id="hotbar"></div>
-    </div>
+    <div id="hotbar-container"><div id="block-name">草方块</div><div id="hotbar"></div></div>
 
     <div id="inventory-modal">
         <div class="modal-header"><h2>物品栏</h2><div class="close-btn" id="close-inv">关闭</div></div>
-        <div class="modal-content">
-            <div class="inv-section">
-                <div class="section-title">我的物品 (点击装备)</div>
-                <div class="inv-grid" id="inv-grid-content"></div>
-            </div>
-        </div>
+        <div class="modal-content"><div class="inv-section"><div class="section-title">我的物品 (点击装备)</div><div class="inv-grid" id="inv-grid-content"></div></div></div>
     </div>
 
     <div id="death-screen"><div>你死了！</div><button id="respawn-btn">重生</button></div>
 
-    <!-- 使用全球最稳定的 jsdelivr 避免网络卡加载 -->
     <script type="module">
         import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
         // ==========================================
-        // 1. 柏林噪声与基础库
+        // 1. 柏林噪声
         // ==========================================
         const PERLIN={p:new Uint8Array(512),init(){let p=new Uint8Array(256);for(let i=0;i<256;i++)p[i]=Math.floor(Math.random()*256);for(let i=0;i<512;i++)this.p[i]=p[i&255];},fade(t){return t*t*t*(t*(t*6-15)+10);},lerp(t,a,b){return a+t*(b-a);},grad(h,x,y,z){let u=h<8?x:y,v=h<4?y:h===12||h===14?x:z;return((h&1)===0?u:-u)+((h&2)===0?v:-v);},noise(x,y,z){let X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);let u=this.fade(x),v=this.fade(y),w=this.fade(z);let A=this.p[X]+Y,AA=this.p[A]+Z,AB=this.p[A+1]+Z,B=this.p[X+1]+Y,BA=this.p[B]+Z,BB=this.p[B+1]+Z;return this.lerp(w,this.lerp(v,this.lerp(u,this.grad(this.p[AA],x,y,z),this.grad(this.p[BA],x-1,y,z)),this.lerp(u,this.grad(this.p[AB],x,y-1,z),this.grad(this.p[BB],x-1,y-1,z))),this.lerp(v,this.lerp(u,this.grad(this.p[AA+1],x,y,z-1),this.grad(this.p[BA+1],x-1,y,z-1)),this.lerp(u,this.grad(this.p[AB+1],x,y-1,z-1),this.grad(this.p[BB+1],x-1,y-1,z-1))));}};
         PERLIN.init(); function hash2(x, z) { let h = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return Math.abs(h - Math.floor(h)); }
 
         // ==========================================
-        // 2. 高级贴图生成器
+        // 2. 贴图生成器 (3种命令方块)
         // ==========================================
         const blockDB = [];
         function hexToRgb(hex) { return {r: ((hex>>16)&255)/255, g: ((hex>>8)&255)/255, b: (hex&255)/255}; }
         
-        function createTex(type, baseHex, secHex=null) {
+        function createTex(type, baseHex) {
             const canvas = document.createElement('canvas'); canvas.width=16; canvas.height=16; const ctx=canvas.getContext('2d');
-            
             if (type === 'item') {
                 ctx.fillStyle='transparent'; ctx.fillRect(0,0,16,16);
                 if(baseHex === 0x00ffff) { 
@@ -182,18 +189,19 @@
                     ctx.fillStyle='#dddddd'; ctx.beginPath(); ctx.arc(9,9,3,0,Math.PI*2); ctx.fill();
                 }
             } else {
-                const base = hexToRgb(baseHex); const sec = secHex ? hexToRgb(secHex) : null;
+                const base = hexToRgb(baseHex); 
                 for(let x=0;x<16;x++){ for(let y=0;y<16;y++){
                     let nr=base.r, ng=base.g, nb=base.b; const n=(Math.random()-0.5)*0.15; nr+=n; ng+=n; nb+=n;
-                    
                     if(type==='grass_side'&&y<6){ nr=0.54+n; ng=0.27+n; nb=0.07+n; }
                     if(type==='wood'&&x%4===0){ nr-=0.1; ng-=0.1; nb-=0.1; }
                     if(type==='plank'&&(y%4===0||x===0||x===8)){ nr-=0.1; ng-=0.1; nb-=0.1; }
                     if(type==='stonebrick'&&(y%8===0 || (y<8&&x===8) || (y>8&&x===0))){ nr-=0.2; ng-=0.2; nb-=0.2; }
                     if(type==='quartz'&&(x===0||x===15||y===0||y===15)){ nr+=0.1; ng+=0.1; nb+=0.1; }
-                    if(type==='bookshelf'){ if(y===0||y===7||y===15){ nr=0.4;ng=0.2;nb=0.1; } else { const bColor = hash2(x,y)>0.5?1:0.2; nr=bColor; ng=hash2(x+1,y)>0.5?1:0.2; nb=hash2(x+2,y)>0.5?1:0.2; }}
-                    if(type==='cmd_block'){ nr=0.8+n; ng=0.6+n; nb=0.4+n; if(x>4&&x<11&&y>4&&y<11){ nr=0.2; ng=1.0; nb=1.0; } if(x===0||x===15||y===0||y===15) { nr=0.2; ng=0.2; nb=0.2; } }
-                    if(type==='glowstone'){ if(Math.random()<0.2){ nr=1;ng=1;nb=0.8; } }
+                    if(type==='cmd_block'){ 
+                        nr=base.r+n; ng=base.g+n; nb=base.b+n; 
+                        if(x>4&&x<11&&y>4&&y<11){ nr=0.2; ng=1.0; nb=1.0; } // 发光核心
+                        if(x===0||x===15||y===0||y===15) { nr=0.2; ng=0.2; nb=0.2; } // 边框
+                    }
                     if(type==='glass'&&(x===0||x===15||y===0||y===15)){ nr=1; ng=1; nb=1; } else if(type==='glass'){ ctx.fillStyle=`rgba(${nr*255},${ng*255},${nb*255},0.3)`; ctx.fillRect(x,y,1,1); continue;}
                     
                     let finalR=Math.max(0,Math.min(1,nr)), finalG=Math.max(0,Math.min(1,ng)), finalB=Math.max(0,Math.min(1,nb));
@@ -203,7 +211,6 @@
             const tex=new THREE.CanvasTexture(canvas); tex.magFilter=THREE.NearestFilter; return {tex, url:canvas.toDataURL()};
         }
 
-        // 方块注册
         blockDB[1] = { name: "草方块", type: 'multiside', top: createTex('solid', 0x55aa55), side: createTex('grass_side', 0x55aa55), bot: createTex('solid', 0x8b4513) };
         blockDB[2] = { name: "泥土", type: 'solid', tex: createTex('solid', 0x8b4513) };
         blockDB[3] = { name: "石头", type: 'solid', tex: createTex('solid', 0x808080) };
@@ -213,25 +220,26 @@
         blockDB[7] = { name: "玻璃", type: 'transparent', tex: createTex('glass', 0xadd8e6) }; 
         blockDB[8] = { name: "基岩", type: 'solid', tex: createTex('solid', 0x333333) };
         blockDB[11]= { name: "石砖", type: 'solid', tex: createTex('stonebrick', 0x808080) };
-        blockDB[12]= { name: "书架", type: 'multiside', top: createTex('plank', 0xcd853f), side: createTex('bookshelf', 0x8b4513), bot: createTex('plank', 0xcd853f) };
         blockDB[13]= { name: "石英块", type: 'solid', tex: createTex('quartz', 0xeeeeee) };
-        blockDB[14]= { name: "地狱岩", type: 'solid', tex: createTex('solid', 0x8b0000) };
-        blockDB[15]= { name: "发光石", type: 'solid', tex: createTex('glowstone', 0xdaa520) };
-        blockDB[16]= { name: "海晶灯", type: 'solid', tex: createTex('quartz', 0x20b2aa) };
-        blockDB[20]= { name: "命令方块", type: 'solid', tex: createTex('cmd_block', 0xd2691e) };
+        
+        // 三种命令方块
+        blockDB[20]= { name: "脉冲命令方块", type: 'solid', tex: createTex('cmd_block', 0xd2691e) }; // 橙色
+        blockDB[24]= { name: "循环命令方块", type: 'solid', tex: createTex('cmd_block', 0x800080) }; // 紫色
+        blockDB[25]= { name: "连锁命令方块", type: 'solid', tex: createTex('cmd_block', 0x008000) }; // 绿色
+        
         blockDB[30] = { name: "钻石剑", type: 'item', tex: createTex('item', 0x00ffff) };
-        blockDB[31] = { name: "雪球 (菜单)", type: 'item', tex: createTex('item', 0xffffff) };
+        blockDB[31] = { name: "雪球", type: 'item', tex: createTex('item', 0xffffff) };
 
         const materials = [];
         for(let i=1; i<blockDB.length; i++) {
             if(!blockDB[i]) continue; const b = blockDB[i];
             if(b.type === 'multiside') materials[i] = [new THREE.MeshLambertMaterial({map:b.side.tex}), new THREE.MeshLambertMaterial({map:b.side.tex}), new THREE.MeshLambertMaterial({map:b.top.tex}), new THREE.MeshLambertMaterial({map:b.bot.tex}), new THREE.MeshLambertMaterial({map:b.side.tex}), new THREE.MeshLambertMaterial({map:b.side.tex})];
             else materials[i] = new THREE.MeshLambertMaterial({map:b.tex.tex, transparent:b.type==='transparent', opacity:0.8, side:THREE.DoubleSide});
-            if(i===15 || i===16 || i===20) materials[i].emissive = new THREE.Color(0x333333);
+            if(i===20 || i===24 || i===25) materials[i].emissive = new THREE.Color(0x333333); // 命方块发光
         }
 
         // ==========================================
-        // 3. 核心变量与安全修复 (补全丢失的生命系统)
+        // 3. 核心变量
         // ==========================================
         let scene, camera, renderer, player, pitchObject;
         let velocity = new THREE.Vector3(); 
@@ -239,17 +247,23 @@
         let canJump = false, prevTime = performance.now();
         let moveX = 0, moveZ = 0; 
         let moveTouchId = null, lookTouchId = null, joystickStartX = 0, joystickStartY = 0;
-        
-        let gameMode = 1; // 创造模式
-        let isFlying = false; let lastJumpTime = 0;
-        let playerHP = 20; 
-        let isDead = false;
+        const touchesData = {}; 
 
-        const mobs = []; // 修复防崩溃：防止 raycaster 找不到 mobs 数组
+        let gameMode = 1; 
+        let isFlying = false; let lastJumpTime = 0;
+        
+        window.playerHP = 20; 
+        window.isDead = false;
+
+        const mobs = []; const mobGeo = new THREE.BoxGeometry(1, 1, 1);
 
         const CHUNK_SIZE = 16, RENDER_DISTANCE = 2; 
         const blockDataMap = new Map(), activeChunks = new Map(); 
+        
+        // 命令方块实体数据 NBT: "x_y_z" -> { command, type, active, delay, currentDelay }
         const blockEntities = new Map(); 
+        let tickAccumulator = 0; // 游戏刻累加器
+
         let currentChunkX = -999, currentChunkZ = -999;
         
         const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -259,24 +273,24 @@
         let sunLight, hemiLight, skyColor, fog;
 
         const inventory = new Array(40).fill(0);
-        [1,4,6,7,11,12,13,14,15,16,20].forEach(id => inventory[id]=64);
+        [1,4,6,7,11,13,20,24,25].forEach(id => inventory[id]=64);
         inventory[30] = 1; inventory[31] = 1; 
-        const hotbarSlots = [30, 31, 11, 12, 13, 15, 20]; 
+        const hotbarSlots = [30, 31, 11, 13, 20, 24, 25]; 
         let activeHotbarIndex = 0;
         let currentEditingCmdBlock = null; 
 
-        // 补全修复：生命与重生系统
         window.takeDamage = function(amt) {
-            if(isDead || gameMode === 1) return; 
-            playerHP -= amt;
-            let displayHP = Math.max(0, Math.floor(playerHP));
+            if(window.isDead || gameMode === 1) return; 
+            window.playerHP -= amt;
+            let displayHP = Math.max(0, Math.floor(window.playerHP));
             let full = Math.floor(displayHP/2);
-            document.getElementById('hp-bar').innerText = '❤️'.repeat(full) + '🖤'.repeat(10 - full);
-            if(playerHP <= 0) { isDead = true; document.getElementById('death-screen').style.display = 'flex'; }
+            const hpBar = document.getElementById('hp-bar');
+            if(hpBar) hpBar.innerText = '❤️'.repeat(full) + '🖤'.repeat(10 - full);
+            if(window.playerHP <= 0) { window.isDead = true; document.getElementById('death-screen').style.display = 'flex'; }
         }
 
         window.respawn = function() {
-            isDead = false; playerHP = 20; window.takeDamage(0);
+            window.isDead = false; window.playerHP = 20; window.takeDamage(0);
             document.getElementById('death-screen').style.display = 'none';
             player.position.set(0, getTerrainHeight(0,0)+10, 0); velocity.set(0,0,0);
         }
@@ -286,20 +300,12 @@
         // ==========================================
         function boot() {
             try {
-                init3D();
-                buildHUD();
-                initTouchControls();
-                updateChunks();
+                init3D(); buildHUD(); initTouchControls(); updateChunks();
                 document.getElementById('loading-screen').style.display = 'none';
                 animate();
-            } catch(e) {
-                // 如果启动失败，抛出错误到外层，让红屏捕获
-                throw e;
-            }
+            } catch(e) { throw e; }
         }
-        
-        // 延迟启动，避免直接卡死浏览器主线程
-        setTimeout(boot, 500);
+        setTimeout(boot, 300);
 
         function init3D() {
             scene = new THREE.Scene();
@@ -326,99 +332,101 @@
         }
 
         // ==========================================
-        // 5. Title 与指令控制台系统
+        // 5. 指令与 Tick 引擎
         // ==========================================
         let titleTimeout;
         function showTitle(titleText, subtitleText) {
-            const overlay = document.getElementById('title-overlay');
+            const overlay = document.getElementById('title-overlay'); if(!overlay) return;
             if(titleText !== undefined) document.getElementById('title-text').innerText = titleText;
             if(subtitleText !== undefined) document.getElementById('subtitle-text').innerText = subtitleText;
             overlay.style.opacity = '1';
-            clearTimeout(titleTimeout);
-            titleTimeout = setTimeout(() => { overlay.style.opacity = '0'; }, 3000);
+            clearTimeout(titleTimeout); titleTimeout = setTimeout(() => { overlay.style.opacity = '0'; }, 3000);
         }
-        function clearTitle() { document.getElementById('title-overlay').style.opacity = '0'; }
+        function clearTitle() { const o = document.getElementById('title-overlay'); if(o) o.style.opacity = '0'; }
 
         function logChat(msg, color="#fff") {
-            const log = document.getElementById('chat-log');
-            log.innerHTML += `<div style="color:${color}">${msg}</div>`;
-            log.scrollTop = log.scrollHeight;
+            const log = document.getElementById('chat-log'); if(!log) return;
+            log.innerHTML += `<div style="color:${color}">${msg}</div>`; log.scrollTop = log.scrollHeight;
             setTimeout(()=> { if(log.children.length > 5) log.removeChild(log.firstChild); }, 10000);
         }
 
-        function runCommand(cmdStr, executor = {type: 'player', obj: player, name: 'Player'}) {
-            const args = cmdStr.trim().split(/\s+/);
-            const cmd = args[0].toLowerCase();
+        function runCommand(cmdStr, executor = {type: 'player', obj: player, name: 'Player'}, silent = false) {
+            if(!cmdStr || cmdStr.trim() === "") return;
+            const args = cmdStr.trim().split(/\s+/); const cmd = args[0].toLowerCase();
             try {
                 if (cmd === '/gamemode' || cmd === '/gm') {
                     gameMode = (args[1]==='1' || args[1]==='c') ? 1 : 0;
                     if(gameMode===0) { isFlying = false; document.getElementById('down-btn').style.display='none'; }
                     document.getElementById('mode-val').innerText = gameMode===1?'创造模式':'生存模式';
-                    logChat(`游戏模式已更新为 ${gameMode===1?'创造':'生存'}`);
+                    if(!silent) logChat(`游戏模式变更为 ${gameMode===1?'创造':'生存'}`);
                 } 
                 else if (cmd === '/title') {
                     let action = args[2]; let text = args.slice(3).join(' ');
                     if(action === 'clear' || action === 'reset') clearTitle();
-                    else if(action === 'title') showTitle(text, "");
+                    else if(action === 'title') showTitle(text, undefined);
                     else if(action === 'subtitle') showTitle(undefined, text);
                 }
-                else if (cmd === '/tellraw') {
-                    let text = args.slice(2).join(' ');
-                    logChat(text, "#ffcc00");
-                }
+                else if (cmd === '/tellraw') { logChat(args.slice(1).join(' ').replace(/@s/g, executor.name), "#ffcc00"); }
                 else if (cmd === '/tp') {
                     player.position.set(parseFloat(args[1]), parseFloat(args[2]), parseFloat(args[3])); velocity.set(0,0,0);
-                    logChat(`已将您传送到 ${args[1]} ${args[2]} ${args[3]}`);
+                    if(!silent) logChat(`传送到 ${args[1]} ${args[2]} ${args[3]}`);
                 }
                 else if (cmd === '/execute') {
                     let runIdx = args.indexOf('run');
-                    if(runIdx !== -1) { let subCmd = '/' + args.slice(runIdx+1).join(' '); runCommand(subCmd, executor); }
+                    if(runIdx !== -1) { let subCmd = '/' + args.slice(runIdx+1).join(' '); runCommand(subCmd, executor, silent); }
                 }
-                else { logChat(`未知指令: ${cmd}`, "#ff5555"); }
-            } catch(e) { logChat(`指令错误: ${e.message}`, "#ff5555"); }
+                else if (cmd === '/kill') {
+                    if(args[1] === '@e') { mobs.forEach(m => m.hp = 0); if(!silent) logChat("杀死了所有实体"); }
+                    else if(args[1] === '@s' && executor.type === 'player') window.takeDamage(999);
+                }
+                else { if(!silent) logChat(`未知指令: ${cmd}`, "#ff5555"); }
+            } catch(e) { if(!silent) logChat(`指令错误: ${e.message}`, "#ff5555"); }
         }
 
-        document.getElementById('chat-send').onclick = () => {
+        const chatSend = document.getElementById('chat-send');
+        if(chatSend) chatSend.onclick = () => {
             const input = document.getElementById('chat-input');
-            if(input.value.startsWith('/')) runCommand(input.value);
-            else logChat(`<Player> ${input.value}`);
-            input.value = '';
-            document.getElementById('chat-modal').style.display = 'none';
-            document.getElementById('chat-btn').style.display = 'flex';
+            if(input.value.startsWith('/')) runCommand(input.value); else logChat(`<Player> ${input.value}`);
+            input.value = ''; document.getElementById('chat-modal').style.display = 'none'; document.getElementById('chat-btn').style.display = 'flex';
         };
 
-        document.getElementById('cb-save').onclick = () => {
-            if(currentEditingCmdBlock) {
-                const val = document.getElementById('cb-input').value;
-                blockEntities.set(currentEditingCmdBlock, { command: val });
-                document.getElementById('cb-modal').style.display = 'none';
-                currentEditingCmdBlock = null;
-            }
-        };
-        document.getElementById('cb-cancel').onclick = () => {
-            document.getElementById('cb-modal').style.display = 'none';
-            currentEditingCmdBlock = null;
-        };
-
-        // ==========================================
-        // 6. 地形生成
-        // ==========================================
-        function getTerrainHeight(x, z) {
-            let h1 = PERLIN.noise(x*0.01, 0, z*0.01) * 20; 
-            let h2 = PERLIN.noise(x*0.05, 0, z*0.05) * 5;
-            let mountains = PERLIN.noise(x*0.002, 0, z*0.002); mountains = Math.max(0, mountains - 0.2) * 50; 
-            return Math.floor(h1 + h2 + mountains) + 20;
+        // 命令方块后台 20 TPS 引擎
+        function gameTick() {
+            blockEntities.forEach((nbt, key) => {
+                if(!nbt.command) return;
+                
+                // 循环命令方块逻辑 (Repeat)
+                if(nbt.type === 'repeat' && nbt.active === 'always') {
+                    if(nbt.currentDelay > 0) {
+                        nbt.currentDelay--;
+                    } else {
+                        const [x, y, z] = key.split('_').map(Number);
+                        runCommand(nbt.command, {type:'block', name:'@', pos: {x,y,z}}, true); // silent execution
+                        nbt.currentDelay = nbt.delay || 0; // 重置延迟
+                    }
+                }
+            });
         }
+
+        // ==========================================
+        // 6. 地形与方块操作
+        // ==========================================
+        function getTerrainHeight(x, z) { return Math.floor((PERLIN.noise(x*0.01, 0, z*0.01)*20 + PERLIN.noise(x*0.05, 0, z*0.05)*5)) + 20; }
         function getBlock(x, y, z) {
             const key = `${x}_${y}_${z}`; if (blockDataMap.has(key)) return blockDataMap.get(key);
             if (y < 0) return 0; const sy = getTerrainHeight(x, z);
-            if (y > sy) return 0; if (y === sy) return 1; if (y > sy - 3) return 2; if (y === 0) return 8; 
-            return 3; 
+            if (y > sy) return 0; if (y === sy) return 1; if (y > sy - 3) return 2; if (y === 0) return 8; return 3; 
         }
+        
         function setBlock(x, y, z, id, updateMesh = true) {
             const key = `${x}_${y}_${z}`;
             blockDataMap.set(key, id);
-            if(id !== 20) blockEntities.delete(key); else blockEntities.set(key, { command: "" });
+            
+            // 初始化或删除实体数据
+            if (id === 20) blockEntities.set(key, { command: "", type: "impulse", active: "redstone", delay: 0, currentDelay: 0 });
+            else if (id === 24) blockEntities.set(key, { command: "", type: "repeat", active: "redstone", delay: 0, currentDelay: 0 });
+            else if (id === 25) blockEntities.set(key, { command: "", type: "chain", active: "redstone", delay: 0, currentDelay: 0 });
+            else blockEntities.delete(key);
 
             if(updateMesh) { const cx = Math.floor(x/CHUNK_SIZE), cz = Math.floor(z/CHUNK_SIZE); if(activeChunks.has(`${cx}_${cz}`)) buildChunkMesh(cx, cz); }
         }
@@ -448,10 +456,10 @@
         }
 
         // ==========================================
-        // 7. UI与触控系统
+        // 7. UI与控制系统 (高级命令方块UI保存)
         // ==========================================
         function buildHUD() {
-            const hotbarEl = document.getElementById('hotbar'); hotbarEl.innerHTML = '';
+            const hotbarEl = document.getElementById('hotbar'); if(!hotbarEl) return; hotbarEl.innerHTML = '';
             hotbarSlots.forEach((id, index) => {
                 const div = document.createElement('div'); div.className = 'slot' + (index === activeHotbarIndex ? ' active' : '');
                 if(id > 0 && (inventory[id] > 0 || gameMode === 1)) {
@@ -459,14 +467,14 @@
                     if(b.type !== 'item' && gameMode === 0) div.innerHTML = `<div class="slot-count">${inventory[id]}</div>`;
                 }
                 hotbarEl.appendChild(div);
-                div.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); document.querySelector('.slot.active').classList.remove('active'); div.classList.add('active'); activeHotbarIndex = index; document.getElementById('block-name').innerText = id > 0 ? blockDB[id].name : "空"; });
+                div.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); document.querySelector('.slot.active').classList.remove('active'); div.classList.add('active'); activeHotbarIndex = index; const bname = document.getElementById('block-name'); if(bname) bname.innerText = id > 0 ? blockDB[id].name : "空"; });
             });
-            document.getElementById('block-name').innerText = hotbarSlots[activeHotbarIndex] > 0 ? blockDB[hotbarSlots[activeHotbarIndex]].name : "空";
+            const bname = document.getElementById('block-name'); if(bname) bname.innerText = hotbarSlots[activeHotbarIndex] > 0 ? blockDB[hotbarSlots[activeHotbarIndex]].name : "空";
         }
 
         function openInventory() {
-            isInventoryOpen = true; document.getElementById('inventory-modal').style.display = 'flex';
-            const grid = document.getElementById('inv-grid-content'); grid.innerHTML = '';
+            isInventoryOpen = true; const im = document.getElementById('inventory-modal'); if(im) im.style.display = 'flex';
+            const grid = document.getElementById('inv-grid-content'); if(!grid) return; grid.innerHTML = '';
             const maxId = gameMode === 1 ? blockDB.length - 1 : inventory.length - 1;
             for(let i=1; i<=maxId; i++) {
                 if(inventory[i] > 0 || gameMode === 1) {
@@ -480,110 +488,128 @@
                 }
             }
         }
-        document.getElementById('inv-btn').addEventListener('touchstart', (e) => { e.preventDefault(); openInventory(); }, {passive: false});
-        document.getElementById('close-inv').addEventListener('click', () => { isInventoryOpen = false; document.getElementById('inventory-modal').style.display = 'none'; });
-        document.getElementById('chat-btn').addEventListener('click', () => { document.getElementById('chat-modal').style.display='flex'; document.getElementById('chat-btn').style.display='none'; document.getElementById('chat-input').focus(); });
+        
+        const invBtn = document.getElementById('inv-btn'); if(invBtn) invBtn.addEventListener('touchstart', (e) => { e.preventDefault(); openInventory(); }, {passive: false});
+        const closeInv = document.getElementById('close-inv'); if(closeInv) closeInv.addEventListener('click', () => { isInventoryOpen = false; document.getElementById('inventory-modal').style.display = 'none'; });
+        const chatBtn = document.getElementById('chat-btn'); if(chatBtn) chatBtn.addEventListener('click', () => { document.getElementById('chat-modal').style.display='flex'; document.getElementById('chat-btn').style.display='none'; document.getElementById('chat-input').focus(); });
+
+        // 保存命令方块数据，并可能改变方块外观类型
+        document.getElementById('cb-save').onclick = () => {
+            if(currentEditingCmdBlock) {
+                const val = document.getElementById('cb-input').value;
+                const type = document.getElementById('cb-type').value;
+                const active = document.getElementById('cb-active').value;
+                const delay = parseInt(document.getElementById('cb-delay').value) || 0;
+
+                blockEntities.set(currentEditingCmdBlock, { command: val, type: type, active: active, delay: delay, currentDelay: delay });
+                
+                // 根据类型转换方块 ID (改变颜色)
+                const [x,y,z] = currentEditingCmdBlock.split('_').map(Number);
+                let newId = 20; if(type === 'repeat') newId = 24; if(type === 'chain') newId = 25;
+                if(getBlock(x,y,z) !== newId) setBlock(x,y,z, newId, true); // 会重刷网格
+
+                document.getElementById('cb-modal').style.display = 'none'; currentEditingCmdBlock = null;
+            }
+        };
+        document.getElementById('cb-cancel').onclick = () => { document.getElementById('cb-modal').style.display = 'none'; currentEditingCmdBlock = null; };
 
         function initTouchControls() {
             const jBase = document.getElementById('joystick-base'), jKnob = document.getElementById('joystick-knob');
-            const bindBtn = (id, fn) => { const b = document.getElementById(id); b.addEventListener('touchstart', (e) => { e.preventDefault(); b.style.transform='scale(0.9)'; fn(); }, {passive:false}); b.addEventListener('touchend', (e) => { e.preventDefault(); b.style.transform='scale(1)'; }, {passive:false}); };
+            const bindBtn = (id, fn) => { const b = document.getElementById(id); if(b) { b.addEventListener('touchstart', (e) => { e.preventDefault(); b.style.transform='scale(0.9)'; fn(); }, {passive:false}); b.addEventListener('touchend', (e) => { e.preventDefault(); b.style.transform='scale(1)'; }, {passive:false}); }};
 
             let isDescend = false;
             bindBtn('jump-btn', () => { 
-                if(isDead) return;
-                const now = performance.now();
-                if(gameMode === 1 && now - lastJumpTime < 300) { isFlying = !isFlying; velocity.y=0; document.getElementById('down-btn').style.display = isFlying ? 'flex' : 'none'; }
-                else if(isFlying) { velocity.y = 8.0; } else if(canJump) { velocity.y = JUMP_FORCE; canJump = false; }
-                lastJumpTime = now;
+                if(window.isDead) return; const now = performance.now();
+                if(gameMode === 1 && now - lastJumpTime < 300) { isFlying = !isFlying; velocity.y=0; const db = document.getElementById('down-btn'); if(db) db.style.display = isFlying ? 'flex' : 'none'; }
+                else if(isFlying) { velocity.y = 8.0; } else if(canJump) { velocity.y = JUMP_FORCE; canJump = false; } lastJumpTime = now;
             });
             bindBtn('down-btn', () => { if(isFlying) isDescend = true; });
-            document.getElementById('down-btn').addEventListener('touchend', () => isDescend = false);
+            const db = document.getElementById('down-btn'); if(db) db.addEventListener('touchend', () => isDescend = false);
 
             bindBtn('break-btn', () => {
-                if(targetBlockData && !isInventoryOpen && !isDead) {
+                if(targetBlockData && !isInventoryOpen && !window.isDead) {
                     const p = targetBlockData.pos; const id = getBlock(p.x, p.y, p.z);
                     if(id === 8 && gameMode === 0) return; 
-                    setBlock(p.x, p.y, p.z, 0); 
-                    if(gameMode === 0) inventory[id] = (inventory[id]||0) + 1; 
-                    buildHUD(); selectionBox.visible = false; targetBlockData = null;
+                    setBlock(p.x, p.y, p.z, 0); if(gameMode === 0) inventory[id] = (inventory[id]||0) + 1; buildHUD(); selectionBox.visible = false; targetBlockData = null;
                 }
             });
 
             bindBtn('place-btn', () => {
-                if(targetBlockData && !isInventoryOpen && !isDead) {
+                if(targetBlockData && !isInventoryOpen && !window.isDead) {
                     const activeBlockId = hotbarSlots[activeHotbarIndex];
                     if(activeBlockId > 0 && (inventory[activeBlockId] > 0 || gameMode === 1) && blockDB[activeBlockId].type !== 'item') {
                         const norm = targetBlockData.normal; const p = targetBlockData.pos;
                         const nx = Math.round(p.x + norm.x), ny = Math.round(p.y + norm.y), nz = Math.round(p.z + norm.z);
                         const minX=player.position.x-0.3, maxX=player.position.x+0.3, minY=player.position.y, maxY=player.position.y+1.7, minZ=player.position.z-0.3, maxZ=player.position.z+0.3;
                         if (!((minX < nx+0.5 && maxX > nx-0.5) && (minY < ny+0.5 && maxY > ny-0.5) && (minZ < nz+0.5 && maxZ > nz-0.5))) { 
-                            setBlock(nx, ny, nz, activeBlockId); 
-                            if(gameMode === 0) inventory[activeBlockId]--; 
-                            buildHUD();
+                            setBlock(nx, ny, nz, activeBlockId); if(gameMode === 0) inventory[activeBlockId]--; buildHUD();
                         }
                     }
                 }
             });
 
             bindBtn('interact-btn', () => {
-                if(isDead || isInventoryOpen) return;
+                if(window.isDead || isInventoryOpen) return;
                 
                 const activeId = hotbarSlots[activeHotbarIndex];
-                if(activeId === 31) {
+                if(activeId === 31) { // ❄️ 雪球传送菜单 (无需命令方块，手持直接触发)
                     pitchObject.rotation.x -= 0.1; setTimeout(()=>pitchObject.rotation.x += 0.1, 100); 
                     runCommand("/title @s title ❄️ 雪球传送菜单");
-                    runCommand("/title @s subtitle 正在传送至大厅...");
-                    runCommand("/tellraw [系统] 您使用了雪球传送菜单！");
+                    runCommand("/title @s subtitle 正在传送至出生点...");
+                    runCommand("/tellraw 您触发了雪球互动菜单！");
                     setTimeout(() => { runCommand(`/tp 0 ${getTerrainHeight(0,0)+2} 0`); }, 1500); 
                     return;
                 }
 
                 if(targetBlockData) {
-                    const p = targetBlockData.pos;
-                    const id = getBlock(p.x, p.y, p.z);
-                    const key = `${p.x}_${p.y}_${p.z}`;
-                    if(id === 20) {
+                    const p = targetBlockData.pos; const id = getBlock(p.x, p.y, p.z); const key = `${p.x}_${p.y}_${p.z}`;
+                    if(id === 20 || id === 24 || id === 25) { // 选中了任何命令方块
                         const nbt = blockEntities.get(key);
-                        if(gameMode === 1) {
+                        if(gameMode === 1) { // 打开编辑面板
                             currentEditingCmdBlock = key;
                             document.getElementById('cb-input').value = nbt ? nbt.command : "";
+                            document.getElementById('cb-type').value = nbt ? nbt.type : "impulse";
+                            document.getElementById('cb-active').value = nbt ? nbt.active : "redstone";
+                            document.getElementById('cb-delay').value = nbt ? (nbt.delay||0) : 0;
                             document.getElementById('cb-modal').style.display = 'flex';
                         } else {
-                            if(nbt && nbt.command) runCommand(nbt.command, {type:'block', name:'@', pos: p});
+                            // 生存模式：如果它是脉冲命令方块，则执行 (模拟按按钮)
+                            if(nbt && nbt.command && nbt.type === 'impulse') runCommand(nbt.command, {type:'block', name:'@', pos: p});
                         }
                     }
                 }
             });
 
             bindBtn('attack-btn', () => {
-                if(isDead || isInventoryOpen) return;
+                if(window.isDead || isInventoryOpen) return;
                 pitchObject.rotation.z = 0.05; setTimeout(()=>pitchObject.rotation.z = 0, 100);
             });
 
             document.addEventListener('touchstart', (e) => {
-                if(isInventoryOpen || isDead || currentEditingCmdBlock || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal') || e.target.closest('#chat-modal') || e.target.closest('#cb-modal')) return;
-                e.preventDefault(); document.getElementById('intro-text').style.opacity = '0';
+                if(isInventoryOpen || window.isDead || currentEditingCmdBlock || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal') || e.target.closest('#chat-modal') || e.target.closest('#cb-modal')) return;
+                e.preventDefault(); 
+                const intro = document.getElementById('intro-text'); if(intro) intro.style.opacity = '0';
                 for(let i=0; i<e.changedTouches.length; i++) {
                     let t = e.changedTouches[i];
                     if(t.clientX < window.innerWidth/2) {
-                        if(moveTouchId===null) { moveTouchId = t.identifier; joystickStartX = t.clientX; joystickStartY = t.clientY; jBase.style.display='block'; jBase.style.left=t.clientX+'px'; jBase.style.top=t.clientY+'px'; jKnob.style.transform=`translate(0,0)`; }
-                    } else { if(lookTouchId===null) { lookTouchId = t.identifier; touchesData[t.identifier] = {x:t.clientX, y:t.clientY}; } }
+                        if(moveTouchId===null) { moveTouchId = t.identifier; joystickStartX = t.clientX; joystickStartY = t.clientY; if(jBase){jBase.style.display='block'; jBase.style.left=t.clientX+'px'; jBase.style.top=t.clientY+'px';} if(jKnob) jKnob.style.transform=`translate(0,0)`; }
+                    } else { if(lookTouchId===null) { lookTouchId = t.identifier; touchesData[t.identifier] = {x: t.clientX, y: t.clientY}; } }
                 }
             }, {passive:false});
 
             document.addEventListener('touchmove', (e) => {
-                if(isInventoryOpen || isDead || currentEditingCmdBlock || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal') || e.target.closest('#chat-modal') || e.target.closest('#cb-modal')) return;
+                if(isInventoryOpen || window.isDead || currentEditingCmdBlock || e.target.closest('.btn') || e.target.closest('#hotbar-container') || e.target.closest('#inventory-modal') || e.target.closest('#chat-modal') || e.target.closest('#cb-modal')) return;
                 e.preventDefault();
                 for(let i=0; i<e.changedTouches.length; i++) {
                     let t = e.changedTouches[i];
                     if(t.identifier === moveTouchId) {
                         let dx = t.clientX - joystickStartX, dy = t.clientY - joystickStartY;
                         let dist = Math.sqrt(dx*dx + dy*dy); if(dist > 35) { dx = (dx/dist)*35; dy = (dy/dist)*35; }
-                        jKnob.style.transform=`translate(${dx}px, ${dy}px)`; moveX = dx/35; moveZ = dy/35;
-                    } else if (t.identifier === lookTouchId) {
+                        if(jKnob) jKnob.style.transform=`translate(${dx}px, ${dy}px)`; moveX = dx/35; moveZ = dy/35;
+                    } else if (t.identifier === lookTouchId && touchesData[t.identifier]) {
                         let dx = t.clientX - touchesData[t.identifier].x, dy = t.clientY - touchesData[t.identifier].y;
                         player.rotation.y -= dx * 0.007; pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x - dy * 0.007));
-                        touchesData[t.identifier] = {x:t.clientX, y:t.clientY};
+                        touchesData[t.identifier] = {x: t.clientX, y: t.clientY};
                     }
                 }
             }, {passive:false});
@@ -591,7 +617,7 @@
             const endT = (e) => {
                 for(let i=0; i<e.changedTouches.length; i++) {
                     let t = e.changedTouches[i];
-                    if(t.identifier === moveTouchId) { moveTouchId = null; moveX=0; moveZ=0; jBase.style.display='none'; if(isFlying) velocity.y=0; }
+                    if(t.identifier === moveTouchId) { moveTouchId = null; moveX=0; moveZ=0; if(jBase) jBase.style.display='none'; if(isFlying) velocity.y=0; }
                     if(t.identifier === lookTouchId) { lookTouchId = null; delete touchesData[t.identifier]; }
                 }
             };
@@ -600,7 +626,7 @@
         }
 
         // ==========================================
-        // 8. 物理与循环
+        // 8. 物理与循环引擎 (含 Tick 处理)
         // ==========================================
         function checkCollision(px, py, pz) {
             if(isFlying) return false; 
@@ -628,13 +654,21 @@
             if(isInventoryOpen || currentEditingCmdBlock) return;
             const time = performance.now(); const delta = Math.min((time - prevTime) / 1000, 0.1);
             
+            // 游戏刻系统 (Tick Engine) 处理命令方块
+            tickAccumulator += delta;
+            while(tickAccumulator >= 0.05) { // 20 TPS
+                tickAccumulator -= 0.05;
+                gameTick(); 
+            }
+            
             gameTime = (gameTime + delta * 200) % 24000;
             const hour = gameTime / 1000; const cycle = (Math.sin((hour / 24) * Math.PI * 2 - Math.PI/2) + 1) / 2;
             skyColor.lerpColors(new THREE.Color(0x050510), new THREE.Color(0x87CEEB), cycle);
             hemiLight.intensity = 0.1 + cycle * 0.6; sunLight.intensity = Math.max(0, cycle - 0.2); scene.background = skyColor; fog.color = skyColor;
-            const dHour = Math.floor((hour + 6) % 24); document.getElementById('time-val').innerText = `${dHour.toString().padStart(2,'0')}:00`;
+            const dHour = Math.floor((hour + 6) % 24); 
+            const tv = document.getElementById('time-val'); if(tv) tv.innerText = `${dHour.toString().padStart(2,'0')}:00`;
 
-            if(!isDead) {
+            if(!window.isDead) {
                 updateChunks();
 
                 const interactables = []; activeChunks.forEach(g => interactables.push(...g.children));
@@ -644,8 +678,8 @@
                     const hit = intersects[0]; const mat = new THREE.Matrix4(); hit.object.getMatrixAt(hit.instanceId, mat);
                     const pos = new THREE.Vector3().setFromMatrixPosition(mat); pos.x = Math.round(pos.x); pos.y = Math.round(pos.y); pos.z = Math.round(pos.z);
                     targetBlockData = { pos: pos, normal: hit.face.normal };
-                    selectionBox.position.copy(pos); selectionBox.visible = true;
-                } else { targetBlockData = null; selectionBox.visible = false; }
+                    if(selectionBox) { selectionBox.position.copy(pos); selectionBox.visible = true; }
+                } else { targetBlockData = null; if(selectionBox) selectionBox.visible = false; }
 
                 if(!isFlying) { velocity.y -= GRAVITY * delta; velocity.y = Math.max(velocity.y, -40); }
                 const moveVec = new THREE.Vector3(moveX, 0, moveZ);
@@ -667,7 +701,7 @@
                 player.position.set(nx, ny, nz);
                 if(ny < -10 && gameMode === 0) window.takeDamage(20); 
 
-                document.getElementById('pos-val').innerText = `${Math.floor(nx)}, ${Math.floor(ny)}, ${Math.floor(nz)}`;
+                const pv = document.getElementById('pos-val'); if(pv) pv.innerText = `${Math.floor(nx)}, ${Math.floor(ny)}, ${Math.floor(nz)}`;
             }
             prevTime = time; renderer.render(scene, camera);
         }
