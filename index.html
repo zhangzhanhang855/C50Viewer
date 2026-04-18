@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Web - 无限地形与光影版</title>
+    <title>Minecraft Web - 极速实例化渲染版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
         
-        /* 准星 */
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.8); font-size: 20px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 0px #000;}
         
-        /* UI 顶栏 */
         #ui { position: absolute; top: 15px; left: 15px; color: white; text-shadow: 1px 1px 2px black; z-index: 100; pointer-events: none;}
         #hp-bar { font-size: 16px; margin-bottom: 5px; letter-spacing: 2px;}
-        #info-panel { font-size: 14px; color: #ddd; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px;}
+        #info-panel { font-size: 12px; color: #ddd; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 5px;}
         
         #intro-text { position: absolute; top: 30%; width: 100%; text-align: center; color: white; font-size: 16px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; z-index: 50;}
 
-        /* 控制按钮 */
         .btn {
             position: absolute; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center;
@@ -27,11 +24,9 @@
         #place-btn { bottom: 110px; right: 30px; width: 55px; height: 55px; font-size: 22px;}
         #break-btn { bottom: 30px; right: 110px; width: 55px; height: 55px; font-size: 22px;}
 
-        /* 摇杆 */
         #joystick-base { position: absolute; width: 100px; height: 100px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; display: none; z-index: 100; transform: translate(-50%, -50%); pointer-events: none; }
         #joystick-knob { position: absolute; top: 30px; left: 30px; width: 40px; height: 40px; background: rgba(255, 255, 255, 0.6); border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
 
-        /* 物品栏 */
         #inventory-container { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 100;}
         #block-name { color: white; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
         #hotbar { display: flex; gap: 2px; background: rgba(20, 20, 20, 0.8); padding: 4px; border: 3px solid #444; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -46,12 +41,12 @@
         <div id="hp-bar">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
         <div id="info-panel">
             XYZ: <span id="pos-val">0, 0, 0</span><br>
-            时间: <span id="time-val">白昼</span><br>
-            渲染区块: <span id="chunk-val">0</span>
+            时间: <span id="time-val">12:00</span><br>
+            活动区块: <span id="chunk-val">0</span>
         </div>
     </div>
     
-    <div id="intro-text">👈 左滑移动 | 右滑视角 👉<br>世界已无限生成</div>
+    <div id="intro-text">左手摇杆移动 | 右手滑动视角<br>世界地形由算法无限实时生成</div>
 
     <div id="jump-btn" class="btn">跳跃</div>
     <div id="place-btn" class="btn">🧱</div>
@@ -60,7 +55,7 @@
 
     <div id="inventory-container">
         <div id="block-name">草方块</div>
-        <div id="hotbar" id="hotbar-slots"></div>
+        <div id="hotbar"></div> <!-- 修复了ID冲突 -->
     </div>
 
     <script type="importmap">
@@ -75,11 +70,11 @@
         import * as THREE from 'three';
 
         // ==========================================
-        // 1. 微型柏林噪声库 (Procedural Noise)
+        // 1. 微型柏林噪声 (地形引擎核心)
         // ==========================================
         const PERLIN = {
             p: new Uint8Array(512),
-            init(seed) {
+            init() {
                 let p = new Uint8Array(256);
                 for (let i=0; i<256; i++) p[i] = Math.floor(Math.random()*256);
                 for (let i=0; i<512; i++) this.p[i] = p[i & 255];
@@ -89,8 +84,8 @@
             grad(hash, x, y, z) {
                 let h = hash & 15;
                 let u = h < 8 ? x : y;
-                let v = h < 4 ? y : h == 12 || h == 14 ? x : z;
-                return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+                let v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
             },
             noise(x, y, z) {
                 let X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
@@ -107,104 +102,84 @@
         PERLIN.init();
 
         // ==========================================
-        // 2. 程序化纹理生成器 (Canvas Textures)
+        // 2. 程序化 Canvas 纹理生成器
         // ==========================================
         function createPixelTexture(baseColor, noiseIntensity, type = 'solid') {
             const canvas = document.createElement('canvas');
             canvas.width = 16; canvas.height = 16;
             const ctx = canvas.getContext('2d');
-            
             const base = new THREE.Color(baseColor);
             for(let x=0; x<16; x++) {
                 for(let y=0; y<16; y++) {
                     let r = base.r, g = base.g, b = base.b;
-                    
-                    // 噪点
                     const noise = (Math.random() - 0.5) * noiseIntensity;
                     r = Math.min(1, Math.max(0, r + noise));
                     g = Math.min(1, Math.max(0, g + noise));
                     b = Math.min(1, Math.max(0, b + noise));
                     
-                    if (type === 'grass_side' && y < 8) {
-                        // 草地方块侧面的下半截是泥土
-                        r = 0.54 + noise; g = 0.27 + noise; b = 0.07 + noise;
-                    }
-                    if (type === 'wood' && (x % 4 === 0)) {
-                        r -= 0.1; g -= 0.1; b -= 0.1; // 原木纹理竖线
-                    }
-                    if (type === 'brick' && (y % 4 === 0 || (x % 8 === 0 && (y/4)%2===0) || ((x+4)%8 === 0 && (y/4)%2===1))) {
-                        r = 0.8; g = 0.8; b = 0.8; // 砖缝
-                    }
-                    if (type === 'glass' && (x===0 || x===15 || y===0 || y===15)) {
-                        r=1; g=1; b=1; // 玻璃边框
-                    } else if (type === 'glass') {
-                        ctx.fillStyle = `rgba(${r*255},${g*255},${b*255},0.3)`; // 玻璃半透明
-                        ctx.fillRect(x,y,1,1);
-                        continue;
-                    }
+                    if (type === 'grass_side' && y < 6) { r = 0.54+noise; g = 0.27+noise; b = 0.07+noise; } // 泥土部分
+                    if (type === 'wood' && (x % 4 === 0)) { r-=0.1; g-=0.1; b-=0.1; }
+                    if (type === 'brick' && (y % 4 === 0 || (x % 8 === 0 && (y/4)%2===0) || ((x+4)%8 === 0 && (y/4)%2===1))) { r=g=b=0.8; }
+                    if (type === 'glass' && (x===0 || x===15 || y===0 || y===15)) { r=g=b=1; } 
+                    else if (type === 'glass') { ctx.fillStyle = `rgba(${r*255},${g*255},${b*255},0.3)`; ctx.fillRect(x,y,1,1); continue; }
                     
                     ctx.fillStyle = `rgb(${Math.floor(r*255)},${Math.floor(g*255)},${Math.floor(b*255)})`;
                     ctx.fillRect(x,y,1,1);
                 }
             }
             const tex = new THREE.CanvasTexture(canvas);
-            tex.magFilter = THREE.NearestFilter; // 开启像素化抗锯齿
+            tex.magFilter = THREE.NearestFilter; // 保证像素风不模糊
             return { tex, url: canvas.toDataURL() };
         }
 
-        // 生成 8 种材质
         const textures = [
-            { name: "草方块", top: createPixelTexture(0x55aa55, 0.2), side: createPixelTexture(0x55aa55, 0.2, 'grass_side'), bottom: createPixelTexture(0x8b4513, 0.2) }, // 1
-            { name: "泥土", top: createPixelTexture(0x8b4513, 0.2) }, // 2
-            { name: "石头", top: createPixelTexture(0x808080, 0.3) }, // 3
-            { name: "原木", top: createPixelTexture(0x8b5a2b, 0.1, 'wood') }, // 4
-            { name: "树叶", top: createPixelTexture(0x2e8b57, 0.4), transparent: true }, // 5
-            { name: "红砖", top: createPixelTexture(0xb22222, 0.1, 'brick') }, // 6
-            { name: "玻璃", top: createPixelTexture(0x87cefa, 0, 'glass'), transparent: true }, // 7
-            { name: "黑曜石", top: createPixelTexture(0x4b0082, 0.4) } // 8
+            { name: "草方块", top: createPixelTexture(0x55aa55, 0.2), side: createPixelTexture(0x55aa55, 0.2, 'grass_side'), bottom: createPixelTexture(0x8b4513, 0.2) },
+            { name: "泥土", top: createPixelTexture(0x8b4513, 0.2) },
+            { name: "石头", top: createPixelTexture(0x808080, 0.3) },
+            { name: "原木", top: createPixelTexture(0x8b5a2b, 0.1, 'wood') },
+            { name: "树叶", top: createPixelTexture(0x2e8b57, 0.4), transparent: true },
+            { name: "红砖", top: createPixelTexture(0xb22222, 0.1, 'brick') },
+            { name: "玻璃", top: createPixelTexture(0x87cefa, 0, 'glass'), transparent: true },
+            { name: "黑曜石", top: createPixelTexture(0x4b0082, 0.4) }
         ];
 
-        // 转换为 Three.js Material
         const materials = textures.map(t => {
-            if (t.side) {
-                const topM = new THREE.MeshLambertMaterial({ map: t.top.tex });
-                const sideM = new THREE.MeshLambertMaterial({ map: t.side.tex });
-                const botM = new THREE.MeshLambertMaterial({ map: t.bottom.tex });
-                return [sideM, sideM, topM, botM, sideM, sideM]; // 顺序: 右,左,上,下,前,后
-            }
-            return new THREE.MeshLambertMaterial({ map: t.top.tex, transparent: t.transparent || false, opacity: t.transparent ? 0.8 : 1 });
+            if (t.side) return [
+                new THREE.MeshLambertMaterial({ map: t.side.tex }), new THREE.MeshLambertMaterial({ map: t.side.tex }),
+                new THREE.MeshLambertMaterial({ map: t.top.tex }), new THREE.MeshLambertMaterial({ map: t.bottom.tex }),
+                new THREE.MeshLambertMaterial({ map: t.side.tex }), new THREE.MeshLambertMaterial({ map: t.side.tex })
+            ];
+            return new THREE.MeshLambertMaterial({ map: t.top.tex, transparent: t.transparent||false, opacity: t.transparent?0.8:1, side: THREE.DoubleSide });
         });
 
         // ==========================================
-        // 3. 核心引擎变量与场景初始化
+        // 3. 核心变量
         // ==========================================
         let scene, camera, renderer;
         let player, pitchObject;
         
         let velocity = new THREE.Vector3(); 
-        const GRAVITY = 25.0, JUMP_FORCE = 8.5, SPEED = 5.0; 
+        const GRAVITY = 25.0, JUMP_FORCE = 8.5, SPEED = 4.5; 
         let canJump = false, prevTime = performance.now();
         let moveX = 0, moveZ = 0; 
         let moveTouchId = null, lookTouchId = null, joystickStartX = 0, joystickStartY = 0;
         const touchesData = {};
 
-        // 环境与时间
-        let gameTime = 0; // 0-24000
+        let gameTime = 6000; 
         let sunLight, hemiLight, skyColor, fog;
-        let clouds = [];
 
-        // 体素数据与区块系统
         const CHUNK_SIZE = 16;
-        const RENDER_DISTANCE = 2; // 渲染半径 (2 = 5x5 区块)
-        const blockData = new Map(); // 存储所有被修改的方块 "x_y_z" -> typeID (0=空气)
-        const activeChunks = new Map(); // 存储渲染的区块网格 "cx_cz" -> THREE.Group
+        const RENDER_DISTANCE = 2; // (渲染 5x5 个区块)
+        const blockData = new Map(); 
+        const activeChunks = new Map(); 
         let currentChunkX = -999, currentChunkZ = -999;
         
         const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
         let raycaster = new THREE.Raycaster(); 
         let selectionBox; 
-        let currentSelectedBlockId = 1; // 默认草块 (1-8)
+        let currentSelectedBlockId = 1; 
         let playerHP = 20; 
+        let targetBlockData = null; // { pos, id }
 
         init();
         buildUI();
@@ -215,7 +190,7 @@
             scene = new THREE.Scene();
             skyColor = new THREE.Color(0x87CEEB);
             scene.background = skyColor;
-            fog = new THREE.Fog(0x87CEEB, 10, RENDER_DISTANCE * CHUNK_SIZE);
+            fog = new THREE.Fog(0x87CEEB, 15, RENDER_DISTANCE * CHUNK_SIZE + 8);
             scene.fog = fog;
 
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.6);
@@ -226,11 +201,12 @@
             scene.add(sunLight);
 
             player = new THREE.Group(); 
-            player.position.set(8, 30, 8); // 初始高空坠落
+            // 初始生成在 0, 30, 0 的高空，你会看到自己掉落到生成好的世界上
+            player.position.set(0, 30, 0); 
             scene.add(player);
 
             pitchObject = new THREE.Group();
-            pitchObject.position.y = 1.6; // 眼睛高度
+            pitchObject.position.y = 1.6; 
             player.add(pitchObject);
 
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -241,19 +217,9 @@
             selectionBox.visible = false; 
             scene.add(selectionBox);
 
-            // 生成云层
-            const cloudGeo = new THREE.BoxGeometry(4, 1, 4);
-            const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
-            for(let i=0; i<20; i++) {
-                let c = new THREE.Mesh(cloudGeo, cloudMat);
-                c.position.set((Math.random()-0.5)*200, 40 + Math.random()*10, (Math.random()-0.5)*200);
-                scene.add(c);
-                clouds.push(c);
-            }
-
-            renderer = new THREE.WebGLRenderer({ antialias: false }); // 关闭抗锯齿提升性能
+            renderer = new THREE.WebGLRenderer({ antialias: false }); 
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', () => {
@@ -264,112 +230,133 @@
         }
 
         // ==========================================
-        // 4. 世界生成与体素数据引擎 (Voxel Engine)
+        // 4. 地形逻辑与高性能 InstancedMesh 区块
         // ==========================================
-        // 获取指定坐标的方块 ID
-        function getBlock(x, y, z) {
-            x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
-            const key = `${x}_${y}_${z}`;
-            
-            // 1. 检查玩家是否修改过
-            if (blockData.has(key)) return blockData.get(key);
-            
-            // 2. 柏林噪声生成地形
-            const surfaceY = Math.floor(PERLIN.noise(x * 0.03, 0, z * 0.03) * 15) + 5;
-            
-            if (y > surfaceY) return 0; // 空气
-            if (y === surfaceY) return 1; // 草地
-            if (y > surfaceY - 3) return 2; // 泥土
-            if (y === 0) return 8; // 最底层基岩(黑曜石)
-            return 3; // 石头
+        function fbm(x, z) {
+            let total = 0, amplitude = 1, frequency = 0.02, maxValue = 0;
+            for(let i=0; i<2; i++) { // 2次迭代分形噪声
+                total += PERLIN.noise(x * frequency, 0, z * frequency) * amplitude;
+                maxValue += amplitude;
+                amplitude *= 0.5; frequency *= 2.0;
+            }
+            return total / maxValue;
         }
 
-        // 设置方块 (交互系统调用)
+        function getBlock(x, y, z) {
+            x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
+            if (y < 0) return 0; // 最底板防越界
+            
+            const key = `${x}_${y}_${z}`;
+            if (blockData.has(key)) return blockData.get(key);
+            
+            // 地形生成器
+            const noiseVal = fbm(x, z); 
+            const surfaceY = Math.floor((noiseVal + 1) * 6) + 4; // 高度大致在 4 到 16 之间
+            
+            if (y > surfaceY) return 0; 
+            if (y === surfaceY) return 1; 
+            if (y > surfaceY - 3) return 2; 
+            if (y === 0) return 8; // 黑曜石铺底
+            return 3; 
+        }
+
         function setBlock(x, y, z, id) {
             x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
             blockData.set(`${x}_${y}_${z}`, id);
             
-            // 重新渲染该方块所在的区块
             const cx = Math.floor(x / CHUNK_SIZE);
             const cz = Math.floor(z / CHUNK_SIZE);
             buildChunkMesh(cx, cz);
             
-            // 如果在边界，更新相邻区块
+            // 更新相邻区块边界的显示状态
             if (x % CHUNK_SIZE === 0) buildChunkMesh(cx - 1, cz);
             if (x % CHUNK_SIZE === 15) buildChunkMesh(cx + 1, cz);
             if (z % CHUNK_SIZE === 0) buildChunkMesh(cx, cz - 1);
             if (z % CHUNK_SIZE === 15) buildChunkMesh(cx, cz + 1);
         }
 
-        // 区块网格生成器 (带面剔除优化)
+        function isTransparent(id) {
+            if (id === 0) return true;
+            return textures[id - 1].transparent;
+        }
+
+        // 核心突破：将一个区块打包为极少量的 InstancedMesh (实例化网格)
         function buildChunkMesh(cx, cz) {
             const key = `${cx}_${cz}`;
             if (activeChunks.has(key)) {
+                // 清理旧网格
+                activeChunks.get(key).children.forEach(m => m.dispose());
                 scene.remove(activeChunks.get(key));
             }
 
             const chunkGroup = new THREE.Group();
+            const dummy = new THREE.Object3D();
             
-            // 遍历区块内所有柱子
+            // 按材质分类搜集所有需要渲染的方块坐标
+            const blocksByCategory = {};
+            for(let i=1; i<=8; i++) blocksByCategory[i] = [];
+
             for (let x = 0; x < CHUNK_SIZE; x++) {
                 for (let z = 0; z < CHUNK_SIZE; z++) {
                     const gx = cx * CHUNK_SIZE + x;
                     const gz = cz * CHUNK_SIZE + z;
-                    
-                    // 为了性能，只扫描 0 到 30 高度
-                    for (let y = 0; y < 30; y++) {
+                    for (let y = 0; y < 35; y++) {
                         const blockId = getBlock(gx, y, gz);
                         if (blockId === 0) continue;
 
-                        // 核心优化：面剔除 (如果六个面都被堵死，就不渲染这个方块)
-                        const isVisible = 
-                            getBlock(gx+1, y, gz) === 0 || getBlock(gx-1, y, gz) === 0 ||
-                            getBlock(gx, y+1, gz) === 0 || getBlock(gx, y-1, gz) === 0 ||
-                            getBlock(gx, y, gz+1) === 0 || getBlock(gx, y, gz-1) === 0 ||
-                            textures[blockId-1].transparent; // 透明方块强制渲染相邻面
+                        // 面剔除：如果前后左右上下都是不透明的方块，那么这个方块直接不渲染！
+                        const isVisible =
+                            isTransparent(getBlock(gx+1, y, gz)) || isTransparent(getBlock(gx-1, y, gz)) ||
+                            isTransparent(getBlock(gx, y+1, gz)) || isTransparent(getBlock(gx, y-1, gz)) ||
+                            isTransparent(getBlock(gx, y, gz+1)) || isTransparent(getBlock(gx, y, gz-1));
 
                         if (isVisible) {
-                            const mesh = new THREE.Mesh(blockGeometry, materials[blockId - 1]);
-                            mesh.position.set(gx, y, gz);
-                            // 存储坐标以便于射线检测
-                            mesh.userData = { x: gx, y: y, z: gz }; 
-                            chunkGroup.add(mesh);
+                            blocksByCategory[blockId].push({ x: gx, y: y, z: gz });
                         }
                     }
                 }
             }
+
+            // 对每一种方块生成一个实例化网格，极大减少 Draw Call
+            for (let id = 1; id <= 8; id++) {
+                const positions = blocksByCategory[id];
+                if (positions.length === 0) continue;
+
+                const imesh = new THREE.InstancedMesh(blockGeometry, materials[id - 1], positions.length);
+                for (let i = 0; i < positions.length; i++) {
+                    dummy.position.set(positions[i].x, positions[i].y, positions[i].z);
+                    dummy.updateMatrix();
+                    imesh.setMatrixAt(i, dummy.matrix);
+                }
+                imesh.instanceMatrix.needsUpdate = true;
+                chunkGroup.add(imesh);
+            }
+
             scene.add(chunkGroup);
             activeChunks.set(key, chunkGroup);
             document.getElementById('chunk-val').innerText = activeChunks.size;
         }
 
-        // 动态区块加载与卸载
         function updateChunks() {
             const px = Math.floor(player.position.x / CHUNK_SIZE);
             const pz = Math.floor(player.position.z / CHUNK_SIZE);
 
             if (px !== currentChunkX || pz !== currentChunkZ) {
-                currentChunkX = px;
-                currentChunkZ = pz;
-                
+                currentChunkX = px; currentChunkZ = pz;
                 const keepChunks = new Set();
                 
-                // 加载周围区块
                 for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
                     for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
-                        const cx = px + dx;
-                        const cz = pz + dz;
+                        const cx = px + dx; const cz = pz + dz;
                         const key = `${cx}_${cz}`;
                         keepChunks.add(key);
-                        if (!activeChunks.has(key)) {
-                            buildChunkMesh(cx, cz);
-                        }
+                        if (!activeChunks.has(key)) buildChunkMesh(cx, cz);
                     }
                 }
 
-                // 卸载远处区块
                 for (const [key, group] of activeChunks.entries()) {
                     if (!keepChunks.has(key)) {
+                        group.children.forEach(m => m.dispose());
                         scene.remove(group);
                         activeChunks.delete(key);
                     }
@@ -378,29 +365,37 @@
         }
 
         // ==========================================
-        // 5. 真实体素物理系统 (AABB Physics)
+        // 5. 精准的 AABB 物理与触控
         // ==========================================
         function checkCollision(px, py, pz) {
-            // 玩家碰撞箱: 宽 0.6, 高 1.8
-            const minX = Math.floor(px - 0.3), maxX = Math.floor(px + 0.3);
-            const minY = Math.floor(py), maxY = Math.floor(py + 1.7);
-            const minZ = Math.floor(pz - 0.3), maxZ = Math.floor(pz + 0.3);
+            // 增加 0.5 偏移是为了适应 BoxGeometry 中心点对齐在整数坐标系的算法
+            const minX = Math.floor(px - 0.3 + 0.5), maxX = Math.floor(px + 0.3 + 0.5);
+            const minY = Math.floor(py + 0.5), maxY = Math.floor(py + 1.7 + 0.5);
+            const minZ = Math.floor(pz - 0.3 + 0.5), maxZ = Math.floor(pz + 0.3 + 0.5);
 
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
                     for (let z = minZ; z <= maxZ; z++) {
-                        if (getBlock(x, y, z) !== 0) return true; // 撞墙了
+                        if (getBlock(x, y, z) !== 0) return true;
                     }
                 }
             }
             return false;
         }
+        
+        // 防卡死：防止把方块放置在自己的身体里
+        function isPlayerInBlock(bx, by, bz) {
+            const minX = player.position.x - 0.3, maxX = player.position.x + 0.3;
+            const minY = player.position.y, maxY = player.position.y + 1.7;
+            const minZ = player.position.z - 0.3, maxZ = player.position.z + 0.3;
+            const bMinX = bx - 0.5, bMaxX = bx + 0.5;
+            const bMinY = by - 0.5, bMaxY = by + 0.5;
+            const bMinZ = bz - 0.5, bMaxZ = bz + 0.5;
+            return (minX < bMaxX && maxX > bMinX) && (minY < bMaxY && maxY > bMinY) && (minZ < bMaxZ && maxZ > bMinZ);
+        }
 
-        // ==========================================
-        // 6. UI 与触控系统
-        // ==========================================
         function buildUI() {
-            const hotbar = document.getElementById('hotbar-slots');
+            const hotbar = document.getElementById('hotbar');
             textures.forEach((t, i) => {
                 const div = document.createElement('div');
                 div.className = 'slot' + (i===0 ? ' active' : '');
@@ -431,24 +426,20 @@
 
             bindBtn('jump-btn', () => { if(canJump){ velocity.y = JUMP_FORCE; canJump = false; }});
             
-            // 破坏方块
             bindBtn('break-btn', () => {
-                if(targetBlock) {
-                    const pos = targetBlock.object.userData;
-                    setBlock(pos.x, pos.y, pos.z, 0); // 设为空气
-                    selectionBox.visible = false;
+                if(targetBlockData) {
+                    setBlock(targetBlockData.pos.x, targetBlockData.pos.y, targetBlockData.pos.z, 0);
+                    selectionBox.visible = false; targetBlockData = null;
                 }
             });
 
-            // 放置方块
             bindBtn('place-btn', () => {
-                if(targetBlock) {
-                    const norm = targetBlock.face.normal;
-                    const pos = targetBlock.object.userData;
-                    const nx = pos.x + norm.x, ny = pos.y + norm.y, nz = pos.z + norm.z;
+                if(targetBlockData) {
+                    const norm = targetBlockData.normal;
+                    const pos = targetBlockData.pos;
+                    const nx = Math.round(pos.x + norm.x), ny = Math.round(pos.y + norm.y), nz = Math.round(pos.z + norm.z);
                     
-                    // 防卡死检测
-                    if (!checkCollision(player.position.x, player.position.y, player.position.z)) {
+                    if (!isPlayerInBlock(nx, ny, nz)) {
                         setBlock(nx, ny, nz, currentSelectedBlockId);
                     }
                 }
@@ -500,91 +491,89 @@
         }
 
         // ==========================================
-        // 7. 主渲染循环
+        // 6. 游戏循环主逻辑
         // ==========================================
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
             const delta = Math.min((time - prevTime) / 1000, 0.1);
             
-            updateChunks(); // 动态地形系统
+            updateChunks(); 
 
-            // 昼夜交替系统
-            gameTime = (gameTime + delta * 50) % 24000;
+            // 完美的昼夜平滑过渡
+            gameTime = (gameTime + delta * 100) % 24000;
             const hour = gameTime / 1000;
-            let timeStr = "夜间";
-            if(hour > 6 && hour < 18) {
-                timeStr = "白昼";
-                skyColor.lerpColors(new THREE.Color(0x111122), new THREE.Color(0x87CEEB), (hour-6)/2);
-                hemiLight.intensity = 0.6;
-            } else {
-                skyColor.lerpColors(new THREE.Color(0x87CEEB), new THREE.Color(0x111122), hour>18 ? (hour-18)/2 : 1);
-                hemiLight.intensity = 0.2;
-            }
+            const cycle = (Math.sin((hour / 24) * Math.PI * 2 - Math.PI/2) + 1) / 2; // 0 (午夜) 到 1 (正午)
+            
+            skyColor.lerpColors(new THREE.Color(0x111122), new THREE.Color(0x87CEEB), cycle);
+            hemiLight.intensity = 0.2 + cycle * 0.4;
             scene.background = skyColor; fog.color = skyColor;
-            document.getElementById('time-val').innerText = `${timeStr} (${Math.floor(hour)}:00)`;
+            
+            const displayHour = Math.floor((hour + 6) % 24); // 偏移让太阳从6点升起
+            document.getElementById('time-val').innerText = `${displayHour.toString().padStart(2,'0')}:00`;
 
-            // 云层飘动
-            clouds.forEach(c => {
-                c.position.x -= delta * 2;
-                if(c.position.x < player.position.x - 100) c.position.x = player.position.x + 100;
-            });
-
-            // 准星交互 (收集所有活跃区块内的 mesh 用于检测)
+            // 准星射线互动检测 (解析 InstancedMesh 的内部坐标)
             const interactables = [];
             activeChunks.forEach(group => interactables.push(...group.children));
             raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
             const intersects = raycaster.intersectObjects(interactables);
+            
             if(intersects.length > 0 && intersects[0].distance < 6) {
-                targetBlock = intersects[0];
-                selectionBox.position.copy(targetBlock.object.position);
+                const hit = intersects[0];
+                const mat = new THREE.Matrix4();
+                hit.object.getMatrixAt(hit.instanceId, mat);
+                const pos = new THREE.Vector3().setFromMatrixPosition(mat);
+                pos.x = Math.round(pos.x); pos.y = Math.round(pos.y); pos.z = Math.round(pos.z);
+                
+                targetBlockData = { pos: pos, normal: hit.face.normal };
+                selectionBox.position.copy(pos);
                 selectionBox.visible = true;
             } else {
-                targetBlock = null; selectionBox.visible = false;
+                targetBlockData = null; selectionBox.visible = false;
             }
 
-            // --- 真正的物理碰撞解算 (滑墙算法) ---
-            velocity.y -= GRAVITY * delta;
-            
-            const moveVec = new THREE.Vector3(moveX, 0, moveZ);
-            if(moveVec.length() > 1) moveVec.normalize();
-            moveVec.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-            
-            let nx = player.position.x + moveVec.x * SPEED * delta;
-            let ny = player.position.y + velocity.y * delta;
-            let nz = player.position.z + moveVec.z * SPEED * delta;
+            // 将物理运算分 3 步处理，避免快速掉落时穿模卡点
+            const STEPS = 3;
+            const subDelta = delta / STEPS;
+            for(let i=0; i<STEPS; i++) {
+                velocity.y -= GRAVITY * subDelta;
+                velocity.y = Math.max(velocity.y, -30); // 限制终端下落速度
 
-            // X 轴碰撞
-            if(checkCollision(nx, player.position.y, player.position.z)) nx = player.position.x;
-            // Z 轴碰撞
-            if(checkCollision(nx, player.position.y, nz)) nz = player.position.z;
-            
-            // Y 轴 (重力与跳跃) 碰撞
-            if(checkCollision(nx, ny, nz)) {
-                if(velocity.y < 0) {
-                    // 落地
-                    ny = Math.floor(player.position.y); 
-                    velocity.y = 0; canJump = true;
+                const moveVec = new THREE.Vector3(moveX, 0, moveZ);
+                if(moveVec.length() > 1) moveVec.normalize();
+                moveVec.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
+
+                let nx = player.position.x + moveVec.x * SPEED * subDelta;
+                let ny = player.position.y + velocity.y * subDelta;
+                let nz = player.position.z + moveVec.z * SPEED * subDelta;
+
+                if(checkCollision(nx, player.position.y, player.position.z)) nx = player.position.x;
+                if(checkCollision(nx, player.position.y, nz)) nz = player.position.z;
+
+                // Y 轴精准碰撞修正
+                if(checkCollision(nx, ny, nz)) {
+                    if(velocity.y < 0) {
+                        ny = Math.ceil(ny - 0.5) + 0.5; // 吸附到脚下底板表面
+                        velocity.y = 0; canJump = true;
+                    } else {
+                        ny = Math.floor(ny + 1.7 + 0.5) - 1.7 - 0.5; // 撞头回弹
+                        velocity.y = 0;
+                    }
                 } else {
-                    // 撞头
-                    ny = player.position.y; velocity.y = 0;
+                    if(i === STEPS - 1) canJump = false;
                 }
-            } else {
-                canJump = false;
+                player.position.set(nx, ny, nz);
             }
 
-            player.position.set(nx, ny, nz);
-
-            // 虚空掉落
             if(player.position.y < -10) {
                 playerHP -= 2;
                 document.getElementById('hp-bar').innerText = '❤️'.repeat(Math.ceil(playerHP/2)) + '🖤'.repeat(10 - Math.ceil(playerHP/2));
-                player.position.set(nx, 30, nz);
+                player.position.set(player.position.x, 30, player.position.z);
                 velocity.set(0,0,0);
                 if(playerHP <= 0) { alert("你死于掉落虚空！"); playerHP = 20; }
             }
 
-            document.getElementById('pos-val').innerText = `${Math.floor(nx)}, ${Math.floor(ny)}, ${Math.floor(nz)}`;
+            document.getElementById('pos-val').innerText = `${Math.floor(player.position.x)}, ${Math.floor(player.position.y)}, ${Math.floor(player.position.z)}`;
             prevTime = time;
             renderer.render(scene, camera);
         }
