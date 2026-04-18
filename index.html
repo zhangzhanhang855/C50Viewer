@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Web - 物理碰撞与坠落版</title>
+    <title>Minecraft Web - 生存扩充版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
         
         /* 准星 */
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 2px black;}
         
-        /* 状态 UI */
+        /* 状态 UI：加入生命值 */
         #ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 1px 1px 2px black; z-index: 100; pointer-events: none;}
+        #hp-bar { font-size: 18px; margin-bottom: 5px; letter-spacing: 2px;}
         
         /* 新手引导文案 */
-        #intro-text { position: absolute; top: 30%; width: 100%; text-align: center; color: white; font-size: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; z-index: 50;}
+        #intro-text { position: absolute; top: 30%; width: 100%; text-align: center; color: white; font-size: 18px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; z-index: 50;}
 
-        /* --- 控制按钮 --- */
+        /* 控制按钮 */
         .btn {
             position: absolute; background: rgba(255, 255, 255, 0.2); border: 3px solid rgba(255, 255, 255, 0.6);
             border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center;
@@ -26,50 +27,61 @@
         #place-btn { bottom: 120px; right: 30px; width: 60px; height: 60px; font-size: 24px;}
         #break-btn { bottom: 30px; right: 120px; width: 60px; height: 60px; font-size: 24px;}
 
-        /* --- 摇杆 --- */
+        /* 摇杆 */
         #joystick-base { position: absolute; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; display: none; z-index: 100; transform: translate(-50%, -50%); pointer-events: none; }
         #joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.8); border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
 
-        /* --- 优化后的物品栏 (Hotbar) --- */
-        #hotbar {
+        /* 物品栏 (Hotbar) 与方块名 */
+        #inventory-container {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; z-index: 100;
+        }
+        #block-name {
+            color: white; font-weight: bold; font-size: 16px; margin-bottom: 5px;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        #hotbar {
             display: flex; gap: 2px; background: rgba(30, 30, 30, 0.8); padding: 4px; 
-            border: 3px solid #555; border-radius: 4px; z-index: 100;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border: 3px solid #555; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         .slot {
-            width: 45px; height: 45px; border: 2px solid #888; background-color: #aaa;
+            width: 32px; height: 32px; border: 2px solid #888; background-color: #aaa;
             box-sizing: border-box; transition: 0.1s; position: relative;
             box-shadow: inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4);
         }
-        /* 内部色块模拟方块 */
-        .slot-inner {
-            position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px;
-            box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
+        .slot-inner { position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; box-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
         .slot.active { border: 3px solid white; transform: translateY(-5px); box-shadow: 0 0 15px rgba(255,255,255,0.8); }
     </style>
 </head>
 <body>
     <div id="crosshair">+</div>
-    <div id="ui">高度 (Y): <span id="height-val">0.00</span></div>
+    
+    <div id="ui">
+        <div id="hp-bar">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
+        高度 (Y): <span id="height-val">0.00</span>
+    </div>
     
     <div id="intro-text">
-        👈 左屏移动 | 右屏视角 👉<br><br>走到边缘会掉入虚空！
+        👈 左移动 | 右视角 👉<br><br>掉入虚空会扣除 1 颗心！
     </div>
 
     <div id="jump-btn" class="btn">跳跃</div>
     <div id="place-btn" class="btn">🧱</div>
     <div id="break-btn" class="btn">⛏️</div>
-
     <div id="joystick-base"><div id="joystick-knob"></div></div>
 
-    <div id="hotbar">
-        <div class="slot active" data-id="0"><div class="slot-inner" style="background: #55aa55;"></div></div>
-        <div class="slot" data-id="1"><div class="slot-inner" style="background: #8b4513;"></div></div>
-        <div class="slot" data-id="2"><div class="slot-inner" style="background: #808080;"></div></div>
-        <div class="slot" data-id="3"><div class="slot-inner" style="background: #8b5a2b;"></div></div>
-        <div class="slot" data-id="4"><div class="slot-inner" style="background: #ffd700;"></div></div>
+    <div id="inventory-container">
+        <div id="block-name">草方块</div>
+        <div id="hotbar">
+            <div class="slot active" data-id="0"><div class="slot-inner" style="background: #55aa55;"></div></div>
+            <div class="slot" data-id="1"><div class="slot-inner" style="background: #8b4513;"></div></div>
+            <div class="slot" data-id="2"><div class="slot-inner" style="background: #808080;"></div></div>
+            <div class="slot" data-id="3"><div class="slot-inner" style="background: #5c4033;"></div></div>
+            <div class="slot" data-id="4"><div class="slot-inner" style="background: #2e8b57;"></div></div>
+            <div class="slot" data-id="5"><div class="slot-inner" style="background: #b22222;"></div></div>
+            <div class="slot" data-id="6"><div class="slot-inner" style="background: #87cefa;"></div></div>
+            <div class="slot" data-id="7"><div class="slot-inner" style="background: #4b0082;"></div></div>
+        </div>
     </div>
 
     <script type="importmap">
@@ -93,21 +105,30 @@
         let moveTouchId = null, lookTouchId = null, joystickStartX = 0, joystickStartY = 0;
         const touchesData = {};
 
+        // --- 系统状态 ---
+        let playerHP = 20; // 20 HP = 10 颗心
+        
         const objects = []; 
-        let raycaster; // 准星射线
-        let downRaycaster; // 脚底向下的重力射线 (新加入)
+        let raycaster; 
+        let downRaycaster; 
         
         const centerScreen = new THREE.Vector2(0, 0); 
         let targetBlock = null; 
         let selectionBox; 
 
-        const blockMaterials = [
-            new THREE.MeshLambertMaterial({ color: 0x55aa55 }), 
-            new THREE.MeshLambertMaterial({ color: 0x8b4513 }), 
-            new THREE.MeshLambertMaterial({ color: 0x808080 }), 
-            new THREE.MeshLambertMaterial({ color: 0x8b5a2b }), 
-            new THREE.MeshLambertMaterial({ color: 0xffd700 })  
+        // 8种方块的数据字典
+        const blockData = [
+            { name: "草方块", color: 0x55aa55 }, // 0
+            { name: "泥土", color: 0x8b4513 },   // 1
+            { name: "石头", color: 0x808080 },   // 2
+            { name: "原木", color: 0x5c4033 },   // 3
+            { name: "树叶", color: 0x2e8b57 },   // 4
+            { name: "红砖", color: 0xb22222 },   // 5
+            { name: "淡蓝玻璃", color: 0x87cefa }, // 6 (这里用浅蓝纯色代替透明玻璃，避免性能问题)
+            { name: "黑曜石", color: 0x4b0082 }    // 7
         ];
+        
+        const blockMaterials = blockData.map(data => new THREE.MeshLambertMaterial({ color: data.color }));
         const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
         let currentSelectedBlockId = 0;
 
@@ -124,7 +145,7 @@
             scene.add(light);
 
             player = new THREE.Group(); 
-            player.position.set(0, 5, 0); // 出生点设高一点，会有落地的感觉
+            player.position.set(0, 5, 0); 
             scene.add(player);
 
             pitchObject = new THREE.Group();
@@ -134,10 +155,11 @@
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             pitchObject.add(camera);
 
-            // 生成一块 10x10 的初始悬浮岛屿
-            for (let x = -5; x < 5; x++) {
-                for (let z = -5; z < 5; z++) {
-                    const cube = new THREE.Mesh(blockGeometry, blockMaterials[0]); 
+            for (let x = -6; x < 6; x++) {
+                for (let z = -6; z < 6; z++) {
+                    // 中心生成草地，外围生成石头
+                    let type = (Math.abs(x) > 3 || Math.abs(z) > 3) ? 2 : 0;
+                    const cube = new THREE.Mesh(blockGeometry, blockMaterials[type]); 
                     cube.position.set(x, 0, z);
                     scene.add(cube);
                     objects.push(cube); 
@@ -151,20 +173,24 @@
             scene.add(selectionBox);
 
             raycaster = new THREE.Raycaster();
-            downRaycaster = new THREE.Raycaster(); // 初始化脚部检测射线
+            downRaycaster = new THREE.Raycaster(); 
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
+            // 绑定物品栏切换事件
             const slots = document.querySelectorAll('.slot');
+            const blockNameUI = document.getElementById('block-name');
             slots.forEach((slot) => {
                 slot.addEventListener('touchstart', (e) => {
                     e.preventDefault(); e.stopPropagation();
                     document.querySelector('.slot.active').classList.remove('active');
                     slot.classList.add('active');
                     currentSelectedBlockId = parseInt(slot.dataset.id);
+                    // 更新上方文字显示
+                    blockNameUI.innerText = blockData[currentSelectedBlockId].name;
                 });
             });
 
@@ -173,6 +199,26 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
+            
+            updateHPUI();
+        }
+        
+        // 更新生命值 UI
+        function updateHPUI() {
+            const hpBar = document.getElementById('hp-bar');
+            let fullHearts = Math.floor(playerHP / 2);
+            let emptyHearts = 10 - fullHearts;
+            hpBar.innerText = '❤️'.repeat(fullHearts) + '🖤'.repeat(emptyHearts);
+        }
+
+        // 受到伤害
+        function takeDamage(amount) {
+            playerHP -= amount;
+            if (playerHP <= 0) {
+                alert("你掉出世界死亡了！所有状态已重置。");
+                playerHP = 20; // 满血复活
+            }
+            updateHPUI();
         }
 
         function initTouchControls() {
@@ -210,12 +256,11 @@
                     const normal = targetBlock.face.normal;
                     const newPos = targetBlock.object.position.clone().add(normal);
                     
-                    // 防止玩家把方块放在自己脚底和身体里卡住
                     const playerHeadPos = new THREE.Vector3(Math.round(player.position.x), Math.round(player.position.y + 1), Math.round(player.position.z));
                     const playerFootPos = new THREE.Vector3(Math.round(player.position.x), Math.round(player.position.y), Math.round(player.position.z));
                     
                     if (newPos.equals(playerHeadPos) || newPos.equals(playerFootPos)) {
-                        return; // 如果要放置的位置就是玩家身体所在地，则取消放置
+                        return; 
                     }
 
                     const newBlock = new THREE.Mesh(blockGeometry, blockMaterials[currentSelectedBlockId]);
@@ -226,7 +271,7 @@
             });
 
             document.addEventListener('touchstart', (e) => {
-                if(e.target.closest('.btn') || e.target.closest('#hotbar')) return; 
+                if(e.target.closest('.btn') || e.target.closest('#inventory-container')) return; 
                 e.preventDefault(); introText.style.opacity = '0';
 
                 for(let i = 0; i < e.changedTouches.length; i++) {
@@ -250,7 +295,7 @@
             }, {passive: false});
 
             document.addEventListener('touchmove', (e) => {
-                if(e.target.closest('.btn') || e.target.closest('#hotbar')) return;
+                if(e.target.closest('.btn') || e.target.closest('#inventory-container')) return;
                 e.preventDefault();
                 for(let i = 0; i < e.changedTouches.length; i++) {
                     let t = e.changedTouches[i];
@@ -289,9 +334,8 @@
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
-            const delta = Math.min((time - prevTime) / 1000, 0.1); // 限制最大增量防止卡顿时穿模
+            const delta = Math.min((time - prevTime) / 1000, 0.1); 
 
-            // 1. 准星射线交互检测
             raycaster.setFromCamera(centerScreen, camera);
             const intersects = raycaster.intersectObjects(objects);
             if (intersects.length > 0 && intersects[0].distance < 6) {
@@ -303,7 +347,6 @@
                 selectionBox.visible = false;
             }
 
-            // 2. 物理与移动处理
             velocity.x -= velocity.x * 10.0 * delta;
             velocity.z -= velocity.z * 10.0 * delta;
             velocity.y -= GRAVITY * delta; 
@@ -318,29 +361,26 @@
             player.position.x += velocity.x * delta;
             player.position.z += velocity.z * delta;
 
-            // 3. 垂直碰撞检测 (向下发射射线)
-            // 从脚底往上 0.1 格的位置开始向下发射，防止射线起点被埋入方块内部
-            downRaycaster.set(new THREE.Vector3(player.position.x, player.position.y + 0.1, player.position.z), new THREE.Vector3(0, -1, 0));
+            // --- 核心修复：将检测起点抬高到 Y+0.5，探测距离增至 0.6 ---
+            // 这样保证无论下落速度多快，射线都能从方块表面上方开始检测，彻底杜绝穿模
+            downRaycaster.set(new THREE.Vector3(player.position.x, player.position.y + 0.5, player.position.z), new THREE.Vector3(0, -1, 0));
             const groundIntersects = downRaycaster.intersectObjects(objects);
 
-            // 如果脚下有方块，且距离小于检测容差，说明踩在方块上了
-            if (groundIntersects.length > 0 && groundIntersects[0].distance <= 0.11) {
+            if (groundIntersects.length > 0 && groundIntersects[0].distance <= 0.52) {
                 if (velocity.y < 0) {
                     velocity.y = 0; 
                     canJump = true;
-                    // 对齐到方块的顶部表面，方块 Y 在整数位，顶部是 Y + 0.5
                     player.position.y = groundIntersects[0].object.position.y + 0.5;
                 }
             } else {
-                canJump = false; // 在空中不能跳跃
+                canJump = false; 
             }
 
-            // 应用重力下落
             player.position.y += velocity.y * delta;
 
-            // 4. 虚空掉落机制 (Respawn)
+            // 虚空掉落惩罚：扣血并复活
             if (player.position.y < -20) {
-                // 掉入虚空，重置位置到起始点上方
+                takeDamage(2); // 扣 1 颗心
                 player.position.set(0, 10, 0);
                 velocity.set(0, 0, 0);
             }
