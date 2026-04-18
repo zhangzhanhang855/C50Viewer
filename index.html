@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>C50 分子 3D 预览器</title>
+    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #1a1a1a; color: white; margin: 0; }
+        .container { display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        #viewer { width: 100%; height: 80vh; position: relative; }
+        .info { padding: 20px; text-align: center; }
+        .controls { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="info">
+        <h1>C<sub>50</sub> (Fullerene) 3D Model</h1>
+        <p>使用鼠标旋转缩放，查看 $C_{50}$ 的高张力结构</p>
+    </div>
+
+    <div id="viewer" class="viewer_3dmoljs" 
+         data-backgroundcolor="0x222222" 
+         data-style="stick" 
+         data-ui="true">
+        <textarea id="molecule_data" style="display: none;">
+50
+C50 Molecule
+C  -0.547  2.564  3.125
+C   0.885  2.464  3.125
+C  -1.218  1.325  3.344
+C   1.556  1.125  3.344
+C  -0.456  0.000  3.512
+C   0.895  0.000  3.512
+C  -2.584  1.215  2.885
+C   2.894  1.015  2.885
+C  -3.125  0.000  2.245
+C   3.225  0.000  2.245
+C  -2.584 -1.215  2.885
+C   2.894 -1.015  2.885
+C  -1.218 -1.325  3.344
+C   1.556 -1.125  3.344
+C  -0.547 -2.564  3.125
+C   0.885 -2.464  3.125
+C  -1.345  3.456  2.125
+C   1.445  3.356  2.125
+C  -2.856  2.545  1.845
+C   2.956  2.345  1.845
+C  -3.545  0.000  0.845
+C   3.645  0.000  0.845
+C  -2.856 -2.545  1.845
+C   2.956 -2.345  1.845
+C  -1.345 -3.456  2.125
+C   1.445 -3.356  2.125
+C  -0.678  3.845  0.845
+C   0.778  3.745  0.845
+C  -1.445  4.125 -0.545
+C   1.545  4.025 -0.545
+C  -2.845  3.125 -1.545
+C   2.945  3.025 -1.545
+C  -3.545  1.245 -2.125
+C   3.645  1.145 -2.125
+C  -3.845  0.000 -2.545
+C   3.945  0.000 -2.545
+C  -3.545 -1.245 -2.125
+C   3.645 -1.145 -2.125
+C  -2.845 -3.125 -1.545
+C   2.945 -3.025 -1.545
+C  -1.445 -4.125 -0.545
+C   1.545 -4.025 -0.545
+C  -0.678 -3.845  0.845
+C   0.778 -3.745  0.845
+C  -0.785  2.564 -3.125
+C   0.885  2.464 -3.125
+C  -1.218  1.125 -3.344
+C   1.556  1.125 -3.344
+C  -0.547  0.000 -3.512
+C   0.547  0.000 -3.512
+        </textarea>
+    </div>
+</div>
+
+<script>
+    $(function() {
+        let element = $('#viewer');
+        let config = { backgroundColor: '#222222' };
+        let viewer = $3Dmol.createViewer(element, config);
+        
+        // 读取隐藏的 textarea 中的 XYZ 数据
+        let data = $('#molecule_data').val();
+        
+        // 加载模型
+        viewer.addModel(data, "xyz");
+        
+        // 设置渲染风格：球棒模型 (Sphere + Stick)
+        viewer.setStyle({}, {stick:{radius:0.15}, sphere:{radius:0.4, color:'gray'}});
+        
+        viewer.zoomTo();
+        viewer.render();
+    });
+</script>
+
+</body>
+</html>
