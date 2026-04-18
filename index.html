@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Web - 互动建造版</title>
+    <title>Minecraft Web - 物理碰撞与坠落版</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
         
@@ -30,23 +30,32 @@
         #joystick-base { position: absolute; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; display: none; z-index: 100; transform: translate(-50%, -50%); pointer-events: none; }
         #joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.8); border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
 
-        /* --- 物品栏 (Hotbar) --- */
+        /* --- 优化后的物品栏 (Hotbar) --- */
         #hotbar {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 5px; background: rgba(0, 0, 0, 0.5); padding: 5px; border-radius: 8px; z-index: 100;
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 2px; background: rgba(30, 30, 30, 0.8); padding: 4px; 
+            border: 3px solid #555; border-radius: 4px; z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         .slot {
-            width: 40px; height: 40px; border: 2px solid #555; border-radius: 4px; box-sizing: border-box; transition: 0.2s;
+            width: 45px; height: 45px; border: 2px solid #888; background-color: #aaa;
+            box-sizing: border-box; transition: 0.1s; position: relative;
+            box-shadow: inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4);
         }
-        .slot.active { border: 3px solid white; transform: scale(1.1); box-shadow: 0 0 10px white; }
+        /* 内部色块模拟方块 */
+        .slot-inner {
+            position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .slot.active { border: 3px solid white; transform: translateY(-5px); box-shadow: 0 0 15px rgba(255,255,255,0.8); }
     </style>
 </head>
 <body>
     <div id="crosshair">+</div>
-    <div id="ui">高度: <span id="height-val">0.00</span></div>
+    <div id="ui">高度 (Y): <span id="height-val">0.00</span></div>
     
     <div id="intro-text">
-        👈 <b>左半边滑动</b>移动 | <b>右半边滑动</b>视角 👉<br><br>点击底部物品栏切换方块
+        👈 左屏移动 | 右屏视角 👉<br><br>走到边缘会掉入虚空！
     </div>
 
     <div id="jump-btn" class="btn">跳跃</div>
@@ -56,11 +65,11 @@
     <div id="joystick-base"><div id="joystick-knob"></div></div>
 
     <div id="hotbar">
-        <div class="slot active" data-id="0"></div>
-        <div class="slot" data-id="1"></div>
-        <div class="slot" data-id="2"></div>
-        <div class="slot" data-id="3"></div>
-        <div class="slot" data-id="4"></div>
+        <div class="slot active" data-id="0"><div class="slot-inner" style="background: #55aa55;"></div></div>
+        <div class="slot" data-id="1"><div class="slot-inner" style="background: #8b4513;"></div></div>
+        <div class="slot" data-id="2"><div class="slot-inner" style="background: #808080;"></div></div>
+        <div class="slot" data-id="3"><div class="slot-inner" style="background: #8b5a2b;"></div></div>
+        <div class="slot" data-id="4"><div class="slot-inner" style="background: #ffd700;"></div></div>
     </div>
 
     <script type="importmap">
@@ -74,32 +83,30 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // --- 核心变量 ---
         let scene, camera, renderer;
         let player, pitchObject;
         
-        // 物理与移动
         let velocity = new THREE.Vector3(); 
-        const GRAVITY = 30.0, JUMP_FORCE = 12.0; 
-        let canJump = true, prevTime = performance.now();
+        const GRAVITY = 25.0, JUMP_FORCE = 10.0; 
+        let canJump = false, prevTime = performance.now();
         let moveX = 0, moveZ = 0; 
         let moveTouchId = null, lookTouchId = null, joystickStartX = 0, joystickStartY = 0;
         const touchesData = {};
 
-        // --- 互动与方块系统 ---
-        const objects = []; // 存储所有可互动方块
-        let raycaster;
-        const centerScreen = new THREE.Vector2(0, 0); // 屏幕中心
-        let targetBlock = null; // 当前准星对准的方块交点数据
-        let selectionBox; // 黑色高亮边框
+        const objects = []; 
+        let raycaster; // 准星射线
+        let downRaycaster; // 脚底向下的重力射线 (新加入)
+        
+        const centerScreen = new THREE.Vector2(0, 0); 
+        let targetBlock = null; 
+        let selectionBox; 
 
-        // 定义 5 种方块材质
         const blockMaterials = [
-            new THREE.MeshLambertMaterial({ color: 0x55aa55 }), // 0: 草地绿
-            new THREE.MeshLambertMaterial({ color: 0x8b4513 }), // 1: 泥土棕
-            new THREE.MeshLambertMaterial({ color: 0x808080 }), // 2: 石头灰
-            new THREE.MeshLambertMaterial({ color: 0x8b5a2b }), // 3: 木头色
-            new THREE.MeshLambertMaterial({ color: 0xffd700 })  // 4: 金块黄
+            new THREE.MeshLambertMaterial({ color: 0x55aa55 }), 
+            new THREE.MeshLambertMaterial({ color: 0x8b4513 }), 
+            new THREE.MeshLambertMaterial({ color: 0x808080 }), 
+            new THREE.MeshLambertMaterial({ color: 0x8b5a2b }), 
+            new THREE.MeshLambertMaterial({ color: 0xffd700 })  
         ];
         const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
         let currentSelectedBlockId = 0;
@@ -116,48 +123,43 @@
             const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.5);
             scene.add(light);
 
-            // 玩家载体
             player = new THREE.Group(); 
-            player.position.set(0, 5, 0);
+            player.position.set(0, 5, 0); // 出生点设高一点，会有落地的感觉
             scene.add(player);
 
             pitchObject = new THREE.Group();
-            pitchObject.position.y = 1.6; // 眼睛高度
+            pitchObject.position.y = 1.6; 
             player.add(pitchObject);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             pitchObject.add(camera);
 
-            // 初始化生成平地
-            for (let x = -15; x < 15; x++) {
-                for (let z = -15; z < 15; z++) {
-                    const cube = new THREE.Mesh(blockGeometry, blockMaterials[0]); // 默认草地
+            // 生成一块 10x10 的初始悬浮岛屿
+            for (let x = -5; x < 5; x++) {
+                for (let z = -5; z < 5; z++) {
+                    const cube = new THREE.Mesh(blockGeometry, blockMaterials[0]); 
                     cube.position.set(x, 0, z);
                     scene.add(cube);
-                    objects.push(cube); // 加入互动数组
+                    objects.push(cube); 
                 }
             }
 
-            // --- 边界感 (高亮边框) ---
-            const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)); // 比方块大一点点避免Z轴冲突
+            const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)); 
             const edgesMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
             selectionBox = new THREE.LineSegments(edgesGeo, edgesMat);
-            selectionBox.visible = false; // 默认隐藏
+            selectionBox.visible = false; 
             scene.add(selectionBox);
 
             raycaster = new THREE.Raycaster();
+            downRaycaster = new THREE.Raycaster(); // 初始化脚部检测射线
 
-            // 渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
-            // 初始化物品栏UI颜色
             const slots = document.querySelectorAll('.slot');
-            slots.forEach((slot, index) => {
-                slot.style.backgroundColor = '#' + blockMaterials[index].color.getHexString();
-                // 物品栏点击事件
+            slots.forEach((slot) => {
                 slot.addEventListener('touchstart', (e) => {
                     e.preventDefault(); e.stopPropagation();
                     document.querySelector('.slot.active').classList.remove('active');
@@ -178,7 +180,6 @@
             const joystickKnob = document.getElementById('joystick-knob');
             const introText = document.getElementById('intro-text');
 
-            // --- 互动按钮逻辑 ---
             const bindButton = (id, callback) => {
                 const btn = document.getElementById(id);
                 btn.addEventListener('touchstart', (e) => {
@@ -192,29 +193,31 @@
                 }, {passive: false});
             };
 
-            // 跳跃
             bindButton('jump-btn', () => {
                 if (canJump) { velocity.y = JUMP_FORCE; canJump = false; }
             });
 
-            // 破坏方块
             bindButton('break-btn', () => {
                 if (targetBlock) {
-                    scene.remove(targetBlock.object); // 从场景移除
-                    objects.splice(objects.indexOf(targetBlock.object), 1); // 从数组移除
-                    selectionBox.visible = false; // 暂时隐藏边框
+                    scene.remove(targetBlock.object); 
+                    objects.splice(objects.indexOf(targetBlock.object), 1); 
+                    selectionBox.visible = false; 
                 }
             });
 
-            // 放置方块
             bindButton('place-btn', () => {
                 if (targetBlock) {
-                    // 获取点击面的法线向量 (指明是在哪个面上放置)
                     const normal = targetBlock.face.normal;
-                    // 计算新方块的位置：被点击方块的位置 + 法线方向
                     const newPos = targetBlock.object.position.clone().add(normal);
                     
-                    // 生成新方块
+                    // 防止玩家把方块放在自己脚底和身体里卡住
+                    const playerHeadPos = new THREE.Vector3(Math.round(player.position.x), Math.round(player.position.y + 1), Math.round(player.position.z));
+                    const playerFootPos = new THREE.Vector3(Math.round(player.position.x), Math.round(player.position.y), Math.round(player.position.z));
+                    
+                    if (newPos.equals(playerHeadPos) || newPos.equals(playerFootPos)) {
+                        return; // 如果要放置的位置就是玩家身体所在地，则取消放置
+                    }
+
                     const newBlock = new THREE.Mesh(blockGeometry, blockMaterials[currentSelectedBlockId]);
                     newBlock.position.copy(newPos);
                     scene.add(newBlock);
@@ -222,9 +225,8 @@
                 }
             });
 
-            // --- 全局滑动逻辑 ---
             document.addEventListener('touchstart', (e) => {
-                if(e.target.closest('.btn') || e.target.closest('#hotbar')) return; // 忽略 UI 区域
+                if(e.target.closest('.btn') || e.target.closest('#hotbar')) return; 
                 e.preventDefault(); introText.style.opacity = '0';
 
                 for(let i = 0; i < e.changedTouches.length; i++) {
@@ -287,18 +289,13 @@
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now();
-            const delta = (time - prevTime) / 1000;
+            const delta = Math.min((time - prevTime) / 1000, 0.1); // 限制最大增量防止卡顿时穿模
 
-            // --- 射线检测 (准星指向的方块) ---
-            // 每一帧从屏幕正中央发射射线
+            // 1. 准星射线交互检测
             raycaster.setFromCamera(centerScreen, camera);
-            // 检测与所有方块的交点
             const intersects = raycaster.intersectObjects(objects);
-
-            // 距离小于 6 格才算作“够得着”
             if (intersects.length > 0 && intersects[0].distance < 6) {
                 targetBlock = intersects[0];
-                // 将黑框移动到被注视的方块位置
                 selectionBox.position.copy(targetBlock.object.position);
                 selectionBox.visible = true;
             } else {
@@ -306,7 +303,7 @@
                 selectionBox.visible = false;
             }
 
-            // 物理移动处理
+            // 2. 物理与移动处理
             velocity.x -= velocity.x * 10.0 * delta;
             velocity.z -= velocity.z * 10.0 * delta;
             velocity.y -= GRAVITY * delta; 
@@ -315,19 +312,40 @@
             if (moveVector.length() > 1) moveVector.normalize();
             moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
 
-            velocity.x += moveVector.x * 60.0 * delta;
-            velocity.z += moveVector.z * 60.0 * delta;
+            velocity.x += moveVector.x * 40.0 * delta;
+            velocity.z += moveVector.z * 40.0 * delta;
 
             player.position.x += velocity.x * delta;
             player.position.z += velocity.z * delta;
-            player.position.y += velocity.y * delta;
 
-            const groundLevel = 0.5;
-            if (player.position.y < groundLevel) {
-                velocity.y = 0; player.position.y = groundLevel; canJump = true;
+            // 3. 垂直碰撞检测 (向下发射射线)
+            // 从脚底往上 0.1 格的位置开始向下发射，防止射线起点被埋入方块内部
+            downRaycaster.set(new THREE.Vector3(player.position.x, player.position.y + 0.1, player.position.z), new THREE.Vector3(0, -1, 0));
+            const groundIntersects = downRaycaster.intersectObjects(objects);
+
+            // 如果脚下有方块，且距离小于检测容差，说明踩在方块上了
+            if (groundIntersects.length > 0 && groundIntersects[0].distance <= 0.11) {
+                if (velocity.y < 0) {
+                    velocity.y = 0; 
+                    canJump = true;
+                    // 对齐到方块的顶部表面，方块 Y 在整数位，顶部是 Y + 0.5
+                    player.position.y = groundIntersects[0].object.position.y + 0.5;
+                }
+            } else {
+                canJump = false; // 在空中不能跳跃
             }
 
-            document.getElementById('height-val').innerText = (player.position.y - groundLevel).toFixed(2);
+            // 应用重力下落
+            player.position.y += velocity.y * delta;
+
+            // 4. 虚空掉落机制 (Respawn)
+            if (player.position.y < -20) {
+                // 掉入虚空，重置位置到起始点上方
+                player.position.set(0, 10, 0);
+                velocity.set(0, 0, 0);
+            }
+
+            document.getElementById('height-val').innerText = player.position.y.toFixed(2);
             prevTime = time;
             renderer.render(scene, camera);
         }
